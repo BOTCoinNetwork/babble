@@ -7,7 +7,6 @@ import (
 
 	"github.com/BOTCoinNetwork/babble/src/common"
 	"github.com/BOTCoinNetwork/babble/src/hashgraph"
-	"github.com/BOTCoinNetwork/babble/src/node/state"
 	"github.com/BOTCoinNetwork/babble/src/peers"
 	"github.com/BOTCoinNetwork/babble/src/proxy"
 	aproxy "github.com/BOTCoinNetwork/babble/src/proxy/socket/app"
@@ -19,7 +18,6 @@ type TestHandler struct {
 	blocks     []hashgraph.Block
 	blockIndex int
 	snapshot   []byte
-	state      state.State
 	logger     *logrus.Entry
 }
 
@@ -57,14 +55,6 @@ func (p *TestHandler) RestoreHandler(snapshot []byte) ([]byte, error) {
 	return []byte("statehash"), nil
 }
 
-func (p *TestHandler) StateChangeHandler(state state.State) error {
-	p.logger.Debug("StateChanged")
-
-	p.state = state
-
-	return nil
-}
-
 func NewTestHandler(t *testing.T) *TestHandler {
 	logger := common.NewTestEntry(t, common.TestLogLevel)
 
@@ -80,12 +70,8 @@ func TestSocketProxyServer(t *testing.T) {
 	clientAddr := "127.0.0.1:6990"
 	proxyAddr := "127.0.0.1:6991"
 
-	appProxy, err := aproxy.NewSocketAppProxy(
-		clientAddr,
-		proxyAddr,
-		1*time.Second,
-		common.NewTestEntry(t, common.TestLogLevel),
-	)
+	appProxy, err := aproxy.NewSocketAppProxy(clientAddr, proxyAddr, 1*time.Second, common.NewTestEntry(t, common.TestLogLevel))
+
 	if err != nil {
 		t.Fatalf("Cannot create SocketAppProxy: %s", err)
 	}
@@ -154,7 +140,7 @@ func TestSocketProxyClient(t *testing.T) {
 		hashgraph.NewInternalTransaction(hashgraph.PEER_REMOVE, *peers.NewPeer("node1", "london", "")),
 	}
 
-	block := hashgraph.NewBlock(0, 1, []byte{}, []*peers.Peer{}, transactions, internalTransactions, 0)
+	block := hashgraph.NewBlock(0, 1, []byte{}, []*peers.Peer{}, transactions, internalTransactions)
 
 	expectedStateHash := []byte("statehash")
 	expectedSnapshot := []byte("snapshot")
@@ -192,14 +178,5 @@ func TestSocketProxyClient(t *testing.T) {
 
 	if !reflect.DeepEqual(expectedSnapshot, handler.snapshot) {
 		t.Fatalf("snapshot should be %v, not %v", expectedSnapshot, handler.snapshot)
-	}
-
-	err = appProxy.OnStateChanged(state.Babbling)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !reflect.DeepEqual(state.Babbling, handler.state) {
-		t.Fatalf("State should be Babbling, not %v", handler.state.String())
 	}
 }

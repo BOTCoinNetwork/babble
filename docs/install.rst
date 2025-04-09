@@ -72,11 +72,13 @@ where all your go code will reside.
 Dependencies
 ^^^^^^^^^^^^
 
-Babble uses ```go mod``` to manage dependencies.
+Babble uses `Glide <http://github.com/Masterminds/glide>`__ to manage
+dependencies. For Ubuntu users:
 
 ::
 
-    [...]/babble$ make vendor
+    [...]/babble$ curl https://glide.sh/get | sh
+    [...]/babble$ glide install
 
 This will download all dependencies and put them in the **vendor** folder.
 
@@ -102,7 +104,7 @@ If everything goes well, it should output something along these lines:
     ok      github.com/BOTCoinNetwork/babble/src/node       19.171s
     ok      github.com/BOTCoinNetwork/babble/src/peers      0.038s
     ?       github.com/BOTCoinNetwork/babble/src/proxy      [no test files]
-    ok      github.com/BOTCoinNetwork/babble/src/dummy        0.013s
+    ok      github.com/BOTCoinNetwork/babble/src/proxy/dummy        0.013s
     ok      github.com/BOTCoinNetwork/babble/src/proxy/inmem        0.037s
     ok      github.com/BOTCoinNetwork/babble/src/proxy/socket       0.009s
     ?       github.com/BOTCoinNetwork/babble/src/proxy/socket/app   [no test files]

@@ -2,7 +2,6 @@ nodes = 4
 txs = 10
 index = 1
 fast-sync = false
-webrtc = false
 
 up: conf start watch
 
@@ -14,11 +13,11 @@ build :
 # generate keys and peers.json file
 conf : 
 	rm -rf conf
-	./scripts/build-conf.sh $(nodes) $(webrtc)
+	./scripts/build-conf.sh $(nodes)
 
 # launch testnet
 start:
-	./scripts/run-testnet.sh $(nodes) $(fast-sync) $(webrtc)
+	./scripts/run-testnet.sh $(nodes) $(fast-sync)
 
 # monitor stats
 watch: 
@@ -42,7 +41,7 @@ send:
 
 # create new peer and join
 join:
-	./scripts/join.sh $(index) $(fast-sync) $(webrtc)
+	./scripts/join.sh $(index) $(fast-sync)
 
 # leave cleanly - removing itself from peer-set
 leave:

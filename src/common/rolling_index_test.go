@@ -7,8 +7,8 @@ import (
 )
 
 func TestRollingIndex(t *testing.T) {
-	size := 20
-	testSize := 3 * size / 2
+	size := 10
+	testSize := 3 * size
 	RollingIndex := NewRollingIndex("test", size)
 	items := []string{}
 	for i := 0; i < testSize; i++ {
@@ -23,8 +23,8 @@ func TestRollingIndex(t *testing.T) {
 		t.Fatalf("lastIndex should be %d, not %d", expectedLastIndex, lastIndex)
 	}
 
-	start := (lastIndex / size) * size / 2
-	count := len(cached)
+	start := (testSize / (2 * size)) * (size)
+	count := testSize - start
 
 	for i := 0; i < count; i++ {
 		if cached[i] != items[start+i] {
@@ -79,7 +79,7 @@ func TestRollingIndex(t *testing.T) {
 }
 
 func TestRollingIndexSkip(t *testing.T) {
-	size := 20
+	size := 10
 	testSize := 25
 	RollingIndex := NewRollingIndex("test", size)
 

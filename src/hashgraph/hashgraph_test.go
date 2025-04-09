@@ -31,7 +31,7 @@ type TestNode struct {
 
 func NewTestNode(key *ecdsa.PrivateKey) TestNode {
 	pubBytes := bkeys.FromPublicKey(&key.PublicKey)
-	pubID := bkeys.PublicKeyID(pubBytes)
+	pubID := bkeys.PublicKeyID(&key.PublicKey)
 	pubHex := bkeys.PublicKeyHex(&key.PublicKey)
 
 	node := TestNode{
@@ -418,14 +418,14 @@ func initRoundHashgraph(t *testing.T) (*Hashgraph, map[string]string) {
 	h, index, _ := initHashgraphFull(plays, false, n, t)
 
 	//Set Rounds manually; this would normally be handled by DivideRounds()
-	round0Witnesses := make(map[string]roundEvent)
-	round0Witnesses[index["e0"]] = roundEvent{Witness: true, Famous: common.Undefined}
-	round0Witnesses[index["e1"]] = roundEvent{Witness: true, Famous: common.Undefined}
-	round0Witnesses[index["e2"]] = roundEvent{Witness: true, Famous: common.Undefined}
+	round0Witnesses := make(map[string]RoundEvent)
+	round0Witnesses[index["e0"]] = RoundEvent{Witness: true, Famous: common.Undefined}
+	round0Witnesses[index["e1"]] = RoundEvent{Witness: true, Famous: common.Undefined}
+	round0Witnesses[index["e2"]] = RoundEvent{Witness: true, Famous: common.Undefined}
 	h.Store.SetRound(0, &RoundInfo{CreatedEvents: round0Witnesses})
 
-	round1Witnesses := make(map[string]roundEvent)
-	round1Witnesses[index["f1"]] = roundEvent{Witness: true, Famous: common.Undefined}
+	round1Witnesses := make(map[string]RoundEvent)
+	round1Witnesses[index["f1"]] = RoundEvent{Witness: true, Famous: common.Undefined}
 	h.Store.SetRound(1, &RoundInfo{CreatedEvents: round1Witnesses})
 
 	return h, index
@@ -735,7 +735,7 @@ func TestDivideRounds(t *testing.T) {
 
 	expectedRounds := map[int]*RoundInfo{
 		0: {
-			CreatedEvents: map[string]roundEvent{
+			CreatedEvents: map[string]RoundEvent{
 				index["e0"]:  {Witness: true, Famous: common.Undefined},
 				index["e1"]:  {Witness: true, Famous: common.Undefined},
 				index["e2"]:  {Witness: true, Famous: common.Undefined},
@@ -748,7 +748,7 @@ func TestDivideRounds(t *testing.T) {
 			},
 		},
 		1: {
-			CreatedEvents: map[string]roundEvent{
+			CreatedEvents: map[string]RoundEvent{
 				index["f1"]:  {Witness: true, Famous: common.Undefined},
 				index["s11"]: {Witness: false, Famous: common.Undefined},
 			},
@@ -893,8 +893,7 @@ func initBlockHashgraph(t *testing.T) (*Hashgraph, []TestNode, map[string]string
 		[]InternalTransaction{
 			NewInternalTransaction(PEER_ADD, *peers.NewPeer("peer1", "paris", "peer1")),
 			NewInternalTransaction(PEER_REMOVE, *peers.NewPeer("peer2", "london", "peer2")),
-		},
-		0)
+		})
 
 	err := hashgraph.Store.SetBlock(block)
 	if err != nil {
@@ -983,7 +982,7 @@ func TestInsertEventsWithBlockSignatures(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		block1 := NewBlock(1, 2, []byte("framehash"), peerSet.Peers, [][]byte{}, []InternalTransaction{}, 0)
+		block1 := NewBlock(1, 2, []byte("framehash"), peerSet.Peers, [][]byte{}, []InternalTransaction{})
 		sig, _ := block1.Sign(nodes[2].Key)
 
 		//unknown block
@@ -1152,7 +1151,7 @@ func TestDivideRoundsBis(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expectedCreatedEvents := map[int]map[string]roundEvent{
+	expectedCreatedEvents := map[int]map[string]RoundEvent{
 		0: {
 			index["e0"]:   {Witness: true, Famous: common.Undefined},
 			index["e1"]:   {Witness: true, Famous: common.Undefined},
@@ -1267,7 +1266,7 @@ func TestDecideFame(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expectedCreatedEvents := map[int]map[string]roundEvent{
+	expectedCreatedEvents := map[int]map[string]RoundEvent{
 		0: {
 			index["e0"]:   {Witness: true, Famous: common.True},
 			index["e1"]:   {Witness: true, Famous: common.True},
@@ -1608,20 +1607,6 @@ func TestGetFrame(t *testing.T) {
 			t.Fatal("Frame.Events is not good")
 		}
 
-		timestamps := []int64{}
-		for _, fw := range []string{"f0", "f1", "f2"} {
-			e, err := h.Store.GetEvent(index[fw])
-			if err != nil {
-				t.Fatal(err)
-			}
-			timestamps = append(timestamps, e.Timestamp())
-		}
-		expectedTimestamp := common.Median(timestamps)
-
-		if !reflect.DeepEqual(expectedTimestamp, frame.Timestamp) {
-			t.Fatal("Frame.Timestamp is not good")
-		}
-
 		block0, err := h.Store.GetBlock(0)
 		if err != nil {
 			t.Fatalf("Store should contain a block with Index 1: %v", err)
@@ -1692,20 +1677,6 @@ func TestGetFrame(t *testing.T) {
 
 		if !reflect.DeepEqual(expectedEvents, frame.Events) {
 			t.Fatal("Frame.Events is not good")
-		}
-
-		timestamps := []int64{}
-		for _, fw := range []string{"g0", "g1", "g2"} {
-			e, err := h.Store.GetEvent(index[fw])
-			if err != nil {
-				t.Fatal(err)
-			}
-			timestamps = append(timestamps, e.Timestamp())
-		}
-		expectedTimestamp := common.Median(timestamps)
-
-		if !reflect.DeepEqual(expectedTimestamp, frame.Timestamp) {
-			t.Fatal("Frame.Timestamp is not good")
 		}
 	})
 

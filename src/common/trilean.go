@@ -1,20 +1,20 @@
 package common
 
-// Trilean is a boolean that can also be undefined
+// Trilean ...
 type Trilean int
 
 const (
-	// Undefined means the value has not been defined yet
+	// Undefined ...
 	Undefined Trilean = iota
-	// True means the value is defined and true
+	// True ...
 	True
-	// False means the value is defined and false
+	// False ...
 	False
 )
 
 var trileans = []string{"Undefined", "True", "False"}
 
-// String returns the string representation of Trilean
+// String ...
 func (t Trilean) String() string {
 	return trileans[t]
 }

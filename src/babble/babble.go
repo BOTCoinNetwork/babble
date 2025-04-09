@@ -9,14 +9,13 @@ import (
 	"github.com/BOTCoinNetwork/babble/src/crypto/keys"
 	h "github.com/BOTCoinNetwork/babble/src/hashgraph"
 	"github.com/BOTCoinNetwork/babble/src/net"
-	"github.com/BOTCoinNetwork/babble/src/net/signal/wamp"
 	"github.com/BOTCoinNetwork/babble/src/node"
 	"github.com/BOTCoinNetwork/babble/src/peers"
 	"github.com/BOTCoinNetwork/babble/src/service"
 	"github.com/sirupsen/logrus"
 )
 
-// Babble encapsulates the components that make up a Babble node.
+// Babble is a struct containing the key parts of a babble node
 type Babble struct {
 	Config       *config.Config
 	Node         *node.Node
@@ -28,7 +27,8 @@ type Babble struct {
 	logger       *logrus.Entry
 }
 
-// NewBabble returns a new Babble instance.
+// NewBabble is a factory method to produce
+// a Babble instance.
 func NewBabble(c *config.Config) *Babble {
 	engine := &Babble{
 		Config: c,
@@ -38,45 +38,38 @@ func NewBabble(c *config.Config) *Babble {
 	return engine
 }
 
-// Init initialises Babble based on its configuration.
+// Init initialises the babble engine
 func (b *Babble) Init() error {
 
-	b.logger.Debug("validateConfig")
 	if err := b.validateConfig(); err != nil {
 		b.logger.WithError(err).Error("babble.go:Init() validateConfig")
 	}
 
-	b.logger.Debug("initKey")
-	if err := b.initKey(); err != nil {
-		b.logger.WithError(err).Error("babble.go:Init() initKey")
-		return err
-	}
-
-	b.logger.Debug("initPeers")
 	if err := b.initPeers(); err != nil {
 		b.logger.WithError(err).Error("babble.go:Init() initPeers")
 		return err
 	}
 
-	b.logger.Debug("initStore")
 	if err := b.initStore(); err != nil {
 		b.logger.WithError(err).Error("babble.go:Init() initStore")
 		return err
 	}
 
-	b.logger.Debug("initTransport")
 	if err := b.initTransport(); err != nil {
 		b.logger.WithError(err).Error("babble.go:Init() initTransport")
 		return err
 	}
 
-	b.logger.Debug("initNode")
+	if err := b.initKey(); err != nil {
+		b.logger.WithError(err).Error("babble.go:Init() initKey")
+		return err
+	}
+
 	if err := b.initNode(); err != nil {
 		b.logger.WithError(err).Error("babble.go:Init() initNode")
 		return err
 	}
 
-	b.logger.Debug("initService")
 	if err := b.initService(); err != nil {
 		b.logger.WithError(err).Error("babble.go:Init() initService")
 		return err
@@ -85,7 +78,7 @@ func (b *Babble) Init() error {
 	return nil
 }
 
-// Run starts the Babble node.
+// Run starts the Babble Node running
 func (b *Babble) Run() {
 	if b.Service != nil && b.Config.ServiceAddr != "" {
 		go b.Service.Serve()
@@ -95,15 +88,19 @@ func (b *Babble) Run() {
 }
 
 func (b *Babble) validateConfig() error {
-	// If --datadir was explicitly set, but not --db, the following line will
+	// If --datadir was explicitely set, but not --db, the following line will
 	// update the default database dir to be inside the new datadir
 	b.Config.SetDataDir(b.Config.DataDir)
 
 	logFields := logrus.Fields{
 		"babble.DataDir":          b.Config.DataDir,
+		"babble.BindAddr":         b.Config.BindAddr,
+		"babble.AdvertiseAddr":    b.Config.AdvertiseAddr,
 		"babble.ServiceAddr":      b.Config.ServiceAddr,
 		"babble.NoService":        b.Config.NoService,
 		"babble.MaxPool":          b.Config.MaxPool,
+		"babble.Store":            b.Config.Store,
+		"babble.LoadPeers":        b.Config.LoadPeers,
 		"babble.LogLevel":         b.Config.LogLevel,
 		"babble.Moniker":          b.Config.Moniker,
 		"babble.HeartbeatTimeout": b.Config.HeartbeatTimeout,
@@ -116,34 +113,19 @@ func (b *Babble) validateConfig() error {
 		"babble.SuspendLimit":     b.Config.SuspendLimit,
 	}
 
-	// WebRTC requires signaling and ICE servers
-	if b.Config.WebRTC {
-		logFields["babble.WebRTC"] = b.Config.WebRTC
-		logFields["babble.SignalAddr"] = b.Config.SignalAddr
-		logFields["babble.SignalRealm"] = b.Config.SignalRealm
-		logFields["babble.SignalSkipVerify"] = b.Config.SignalSkipVerify
-		logFields["babble.ICEAddress"] = b.Config.ICEAddress
-		logFields["babble.ICEUsername"] = b.Config.ICEUsername
-
-	} else {
-		logFields["babble.BindAddr"] = b.Config.BindAddr
-		logFields["babble.AdvertiseAddr"] = b.Config.AdvertiseAddr
-	}
-
 	// Maintenance-mode only works with bootstrap
 	if b.Config.MaintenanceMode {
-		b.logger.Debug("Config maintenance-mode => bootstrap")
+		b.logger.Debug("Config --maintenance-mode => --bootstrap")
 		b.Config.Bootstrap = true
 	}
 
 	// Bootstrap only works with store
 	if b.Config.Bootstrap {
-		b.logger.Debug("Config boostrap => store")
+		b.logger.Debug("Config --boostrap => --store")
 		b.Config.Store = true
 	}
 
 	if b.Config.Store {
-		logFields["babble.Store"] = b.Config.Store
 		logFields["babble.DatabaseDir"] = b.Config.DatabaseDir
 		logFields["babble.Bootstrap"] = b.Config.Bootstrap
 	}
@@ -163,61 +145,38 @@ func (b *Babble) validateConfig() error {
 }
 
 func (b *Babble) initTransport() error {
-	// Leave nil transport if maintenance-mode is activated
-	if b.Config.MaintenanceMode {
-		return nil
+	transport, err := net.NewTCPTransport(
+		b.Config.BindAddr,
+		b.Config.AdvertiseAddr,
+		b.Config.MaxPool,
+		b.Config.TCPTimeout,
+		b.Config.JoinTimeout,
+		b.Config.Logger(),
+	)
+
+	if err != nil {
+		return err
 	}
 
-	if b.Config.WebRTC {
-		signal, err := wamp.NewClient(
-			b.Config.SignalAddr,
-			b.Config.SignalRealm,
-			keys.PublicKeyHex(&b.Config.Key.PublicKey),
-			b.Config.CertFile(),
-			b.Config.SignalSkipVerify,
-			b.Config.TCPTimeout,
-			b.Config.Logger().WithField("component", "webrtc-signal"),
-		)
-
-		if err != nil {
-			return err
-		}
-
-		webRTCTransport, err := net.NewWebRTCTransport(
-			signal,
-			b.Config.ICEServers(),
-			b.Config.MaxPool,
-			b.Config.TCPTimeout,
-			b.Config.JoinTimeout,
-			b.Config.Logger().WithField("component", "webrtc-transport"),
-		)
-
-		if err != nil {
-			return err
-		}
-
-		b.Transport = webRTCTransport
-	} else {
-		tcpTransport, err := net.NewTCPTransport(
-			b.Config.BindAddr,
-			b.Config.AdvertiseAddr,
-			b.Config.MaxPool,
-			b.Config.TCPTimeout,
-			b.Config.JoinTimeout,
-			b.Config.Logger(),
-		)
-
-		if err != nil {
-			return err
-		}
-
-		b.Transport = tcpTransport
-	}
+	b.Transport = transport
 
 	return nil
 }
 
 func (b *Babble) initPeers() error {
+	if !b.Config.LoadPeers {
+		if b.Peers == nil {
+			return fmt.Errorf("LoadPeers false, but babble.Peers is nil")
+		}
+
+		if b.GenesisPeers == nil {
+			return fmt.Errorf("LoadPeers false, but babble.GenesisPeers is nil")
+		}
+
+		return nil
+	}
+
+	// peers.json
 	peerStore := peers.NewJSONPeerSet(b.Config.DataDir, true)
 
 	participants, err := peerStore.PeerSet()
@@ -226,8 +185,6 @@ func (b *Babble) initPeers() error {
 	}
 
 	b.Peers = participants
-
-	b.logger.Debug("Loaded Peers")
 
 	// Set Genesis Peer Set from peers.genesis.json
 	genesisPeerStore := peers.NewJSONPeerSet(b.Config.DataDir, false)

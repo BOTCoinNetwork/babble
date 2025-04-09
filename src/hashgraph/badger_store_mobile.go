@@ -1,3 +1,4 @@
+//go:build mobile
 // +build mobile
 
 package hashgraph
@@ -15,10 +16,10 @@ See https://github.com/BOTCoinNetwork/babble-android/issues/20
 import (
 	"fmt"
 
-	"github.com/jonknight73/badger"
-	badger_options "github.com/jonknight73/badger/options"
 	cm "github.com/BOTCoinNetwork/babble/src/common"
 	"github.com/BOTCoinNetwork/babble/src/peers"
+	"github.com/dgraph-io/badger"
+	badger_options "github.com/dgraph-io/badger/options"
 	"github.com/sirupsen/logrus"
 )
 
@@ -854,12 +855,12 @@ func mapError(err error, name, key string) error {
 	return err
 }
 
-//GetMaintenanceMode is a getter
+// GetMaintenanceMode is a getter
 func (s *BadgerStore) GetMaintenanceMode() bool {
 	return s.maintenanceMode
 }
 
-//SetMaintenanceMode is a setter
+// SetMaintenanceMode is a setter
 func (s *BadgerStore) SetMaintenanceMode(val bool) {
 	s.maintenanceMode = val
 }

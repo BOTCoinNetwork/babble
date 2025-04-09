@@ -11,31 +11,33 @@ import (
 	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
-type key struct {
+// Key ...
+type Key struct {
 	x, y string
 }
 
-func (k key) ToString() string {
+// ToString ...
+func (k Key) ToString() string {
 	return fmt.Sprintf("{%s, %s}", k.x, k.y)
 }
 
-type treKey struct {
+// TreKey ...
+type TreKey struct {
 	x, y, z string
 }
 
-func (k treKey) ToString() string {
+// ToString ...
+func (k TreKey) ToString() string {
 	return fmt.Sprintf("{%s, %s, %s}", k.x, k.y, k.z)
 }
 
-// ParticipantEventsCache is a cache associated with a peer-set that keeps a
-// a RollingIndex of events for every peer.
+// ParticipantEventsCache ...
 type ParticipantEventsCache struct {
 	participants *peers.PeerSet
 	rim          *cm.RollingIndexMap
 }
 
-// NewParticipantEventsCache instantiates a new ParticipantEventsCache. The size
-// parameter controls the size of each RollingIndex within the cache.
+// NewParticipantEventsCache ...
 func NewParticipantEventsCache(size int) *ParticipantEventsCache {
 	return &ParticipantEventsCache{
 		participants: peers.NewPeerSet([]*peers.Peer{}),
@@ -43,14 +45,13 @@ func NewParticipantEventsCache(size int) *ParticipantEventsCache {
 	}
 }
 
-// AddPeer adds a peer to the cache.
+// AddPeer ...
 func (pec *ParticipantEventsCache) AddPeer(peer *peers.Peer) error {
 	pec.participants = pec.participants.WithNewPeer(peer)
 	return pec.rim.AddKey(peer.ID())
 }
 
-// particant is the CASE-INSENSITIVE string hex representation of the public
-// key.
+//particant is the CASE-INSENSITIVE string hex representation of the public key.
 func (pec *ParticipantEventsCache) participantID(participant string) (uint32, error) {
 	pUpper := strings.ToUpper(participant)
 	peer, ok := pec.participants.ByPubKey[pUpper]
@@ -61,7 +62,7 @@ func (pec *ParticipantEventsCache) participantID(participant string) (uint32, er
 	return peer.ID(), nil
 }
 
-// Get returns a participant's events with index > skip
+//Get returns participant events with index > skip
 func (pec *ParticipantEventsCache) Get(participant string, skipIndex int) ([]string, error) {
 	id, err := pec.participantID(participant)
 	if err != nil {
@@ -80,7 +81,7 @@ func (pec *ParticipantEventsCache) Get(participant string, skipIndex int) ([]str
 	return res, nil
 }
 
-// GetItem returns a specific event for a specific peer.
+// GetItem ...
 func (pec *ParticipantEventsCache) GetItem(participant string, index int) (string, error) {
 	id, err := pec.participantID(participant)
 	if err != nil {
@@ -94,7 +95,7 @@ func (pec *ParticipantEventsCache) GetItem(participant string, index int) (strin
 	return item.(string), nil
 }
 
-// GetLast returns the index of a participant's last event.
+// GetLast ...
 func (pec *ParticipantEventsCache) GetLast(participant string) (string, error) {
 	id, err := pec.participantID(participant)
 	if err != nil {
@@ -108,7 +109,7 @@ func (pec *ParticipantEventsCache) GetLast(participant string) (string, error) {
 	return last.(string), nil
 }
 
-// Set attemps to set an event to a participant's events.
+// Set ...
 func (pec *ParticipantEventsCache) Set(participant string, hash string, index int) error {
 	id, err := pec.participantID(participant)
 	if err != nil {
@@ -122,7 +123,7 @@ func (pec *ParticipantEventsCache) Known() map[uint32]int {
 	return pec.rim.Known()
 }
 
-// PeerSetCache is a cache that keeps track of peer-sets.
+// PeerSetCache ...
 type PeerSetCache struct {
 	rounds             sort.IntSlice
 	peerSets           map[int]*peers.PeerSet
@@ -131,7 +132,7 @@ type PeerSetCache struct {
 	firstRounds        map[uint32]int
 }
 
-// NewPeerSetCache creates a new PeerSetCache.
+// NewPeerSetCache ...
 func NewPeerSetCache() *PeerSetCache {
 	return &PeerSetCache{
 		rounds:             sort.IntSlice{},
@@ -142,7 +143,7 @@ func NewPeerSetCache() *PeerSetCache {
 	}
 }
 
-// Set adds a peer-set at a given round and updates internal information.
+// Set ...
 func (c *PeerSetCache) Set(round int, peerSet *peers.PeerSet) error {
 	if _, ok := c.peerSets[round]; ok {
 		return cm.NewStoreErr("PeerSetCache", cm.KeyAlreadyExists, strconv.Itoa(round))
@@ -165,7 +166,7 @@ func (c *PeerSetCache) Set(round int, peerSet *peers.PeerSet) error {
 	return nil
 }
 
-// Get returns the peer-set corresponding to a given round.
+// Get ...
 func (c *PeerSetCache) Get(round int) (*peers.PeerSet, error) {
 	//check if directly in peerSets
 	ps, ok := c.peerSets[round]
@@ -192,7 +193,7 @@ func (c *PeerSetCache) Get(round int) (*peers.PeerSet, error) {
 	return c.peerSets[c.rounds[len(c.rounds)-1]], nil
 }
 
-// GetAll returns all peer-sets in a map of round to peer-set.
+// GetAll ...
 func (c *PeerSetCache) GetAll() (map[int][]*peers.Peer, error) {
 	res := make(map[int][]*peers.Peer)
 	for _, r := range c.rounds {
@@ -201,18 +202,17 @@ func (c *PeerSetCache) GetAll() (map[int][]*peers.Peer, error) {
 	return res, nil
 }
 
-// RepertoireByID returns all the known peers indexed by ID. This includes peers
-// that are no longer in the active peer-set.
+// RepertoireByID ...
 func (c *PeerSetCache) RepertoireByID() map[uint32]*peers.Peer {
 	return c.repertoireByID
 }
 
-// RepertoireByPubKey returns all the known peers indexed by public key.
+// RepertoireByPubKey ...
 func (c *PeerSetCache) RepertoireByPubKey() map[string]*peers.Peer {
 	return c.repertoireByPubKey
 }
 
-// FirstRound returns the index of the first round where a peer appeared.
+// FirstRound ...
 func (c *PeerSetCache) FirstRound(id uint32) (int, bool) {
 	fr, ok := c.firstRounds[id]
 	if ok {
@@ -221,13 +221,13 @@ func (c *PeerSetCache) FirstRound(id uint32) (int, bool) {
 	return math.MaxInt32, false
 }
 
-// PendingRound represents a round as it goes through consensus.
+// PendingRound ...
 type PendingRound struct {
 	Index   int
 	Decided bool
 }
 
-// OrderedPendingRounds is an ordered list of PendingRounds.
+// OrderedPendingRounds ...
 type OrderedPendingRounds []*PendingRound
 
 // Len returns the length
@@ -241,13 +241,13 @@ func (a OrderedPendingRounds) Less(i, j int) bool {
 	return a[i].Index < a[j].Index
 }
 
-// PendingRoundsCache is a cache for PendingRounds.
+// PendingRoundsCache ...
 type PendingRoundsCache struct {
 	items       map[int]*PendingRound
 	sortedItems OrderedPendingRounds
 }
 
-// NewPendingRoundsCache creates a new PendingRoundsCache.
+// NewPendingRoundsCache ...
 func NewPendingRoundsCache() *PendingRoundsCache {
 	return &PendingRoundsCache{
 		items:       make(map[int]*PendingRound),
@@ -255,26 +255,25 @@ func NewPendingRoundsCache() *PendingRoundsCache {
 	}
 }
 
-// Queued indicates whether a round is already part of the PendingRoundsCache.
+// Queued ...
 func (c *PendingRoundsCache) Queued(round int) bool {
 	_, ok := c.items[round]
 	return ok
 }
 
-// Set adds an item to the PendingRoundCache and preserves the order.
+// Set ...
 func (c *PendingRoundsCache) Set(pendingRound *PendingRound) {
 	c.items[pendingRound.Index] = pendingRound
 	c.sortedItems = append(c.sortedItems, pendingRound)
 	sort.Sort(c.sortedItems)
 }
 
-// GetOrderedPendingRounds returns the ordered list of PendingRounds.
+// GetOrderedPendingRounds ...
 func (c *PendingRoundsCache) GetOrderedPendingRounds() OrderedPendingRounds {
 	return c.sortedItems
 }
 
-// Update takes a list of indexes of rounds that have been decided and updates
-// the PendingRoundsCache accordingly.
+// Update ...
 func (c *PendingRoundsCache) Update(decidedRounds []int) {
 	for _, drn := range decidedRounds {
 		if dr, ok := c.items[drn]; ok {
@@ -283,7 +282,7 @@ func (c *PendingRoundsCache) Update(decidedRounds []int) {
 	}
 }
 
-// Clean removes a list of rounds from the cache and preserves the sorted order.
+// Clean ...
 func (c *PendingRoundsCache) Clean(processedRounds []int) {
 	for _, pr := range processedRounds {
 		delete(c.items, pr)
@@ -296,46 +295,46 @@ func (c *PendingRoundsCache) Clean(processedRounds []int) {
 	c.sortedItems = newSortedItems
 }
 
-// SigPool holds a collection of BlockSignatures.
+// SigPool ...
 type SigPool struct {
 	items map[string]BlockSignature
 }
 
-// NewSigPool creates a new SigPool.
+// NewSigPool ...
 func NewSigPool() *SigPool {
 	return &SigPool{
 		items: make(map[string]BlockSignature),
 	}
 }
 
-// Add adds an item to SigPool.
+// Add ...
 func (sp *SigPool) Add(blockSignature BlockSignature) {
 	sp.items[blockSignature.Key()] = blockSignature
 }
 
-// Remove removes an item from SigPool.
+// Remove ...
 func (sp *SigPool) Remove(key string) {
 	delete(sp.items, key)
 }
 
-// RemoveSlice removes multiple items from SigPool.
+// RemoveSlice ...
 func (sp *SigPool) RemoveSlice(sigs []BlockSignature) {
 	for _, s := range sigs {
 		delete(sp.items, s.Key())
 	}
 }
 
-// Len returns the number of items in the SigPool.
+// Len ...
 func (sp *SigPool) Len() int {
 	return len(sp.items)
 }
 
-// Items returns the contents of the SigPool as a map.
+// Items ...
 func (sp *SigPool) Items() map[string]BlockSignature {
 	return sp.items
 }
 
-// Slice returns the contents of the SigPool as a slice in no particular order.
+// Slice ...
 func (sp *SigPool) Slice() []BlockSignature {
 	res := []BlockSignature{}
 	for _, bs := range sp.items {

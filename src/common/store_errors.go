@@ -2,38 +2,38 @@ package common
 
 import "fmt"
 
-// StoreErrType encodes the nature of a StoreErr
+// StoreErrType ...
 type StoreErrType uint32
 
 const (
-	// KeyNotFound signifies an item is not found.
+	// KeyNotFound ...
 	KeyNotFound StoreErrType = iota
-	// TooLate signifies that an item is no longer in the store because it was
-	// evicted from the cache.
+	// TooLate ...
 	TooLate
-	// SkippedIndex signifies that an attempt was made to insert an
-	// non-sequential item in a cache.
+	// PassedIndex ...
+	PassedIndex
+	// SkippedIndex ...
 	SkippedIndex
-	// UnknownParticipant signifies that an attempt was made to retrieve objects
-	// associated to a non-existant participant.
+	// NoRoot ...
+	NoRoot
+	// UnknownParticipant ...
 	UnknownParticipant
-	// Empty signifies that a cache is empty.
+	// Empty ...
 	Empty
-	// KeyAlreadyExists Signifies that an attempt was made to insert an item
-	// already present in a cache.
+	// KeyAlreadyExists ...
 	KeyAlreadyExists
+	// NoPeerSet ...
+	NoPeerSet
 )
 
-// StoreErr is a generic error type that encodes errors when accessing objects
-// in the hashgraph store.
+// StoreErr ...
 type StoreErr struct {
 	dataType string
 	errType  StoreErrType
 	key      string
 }
 
-// NewStoreErr creates a StoreErr pertaining to an object indentified by it's
-// dataType and key. The errType parameter determines the nature of the error.
+// NewStoreErr ...
 func NewStoreErr(dataType string, errType StoreErrType, key string) StoreErr {
 	return StoreErr{
 		dataType: dataType,
@@ -42,7 +42,7 @@ func NewStoreErr(dataType string, errType StoreErrType, key string) StoreErr {
 	}
 }
 
-// Error returns an error's message.
+// Error ...
 func (e StoreErr) Error() string {
 	m := ""
 	switch e.errType {
@@ -50,21 +50,27 @@ func (e StoreErr) Error() string {
 		m = "Not Found"
 	case TooLate:
 		m = "Too Late"
+	case PassedIndex:
+		m = "Passed Index"
 	case SkippedIndex:
 		m = "Skipped Index"
+	case NoRoot:
+		m = "No Root"
 	case UnknownParticipant:
 		m = "Unknown Participant"
 	case Empty:
 		m = "Empty"
 	case KeyAlreadyExists:
 		m = "Key Already Exists"
+	case NoPeerSet:
+		m = "No PeerSet"
 	}
 
 	return fmt.Sprintf("%s, %s, %s", e.dataType, e.key, m)
 }
 
 // IsStore checks that an error is of type StoreErr and that it's code matches
-// the provided StoreErr code.
+// the provided StoreErr code. ...
 func IsStore(err error, t StoreErrType) bool {
 	storeErr, ok := err.(StoreErr)
 	return ok && storeErr.errType == t

@@ -1,8 +1,8 @@
 BUILD_TAGS?=babble
 
-# vendor installs all the Go dependencies in vendor/
+# vendor uses Glide to install all the Go dependencies in vendor/
 vendor:
-	(rm go.sum || rm -rf vendor ) && GO111MODULE=on go mod vendor
+	(rm glide.lock || rm -rf vendor ) && glide install
 
 # install compiles and places the binary in GOPATH/bin
 install:
@@ -18,30 +18,27 @@ build:
 
 # dist builds binaries for all platforms and packages them for distribution
 dist:
-	@BUILD_TAGS='$(BUILD_TAGS)' $(CURDIR)/scripts/dist.sh $(VERSION)
+	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
 
 # dist builds aar for mobile android
 mobile-dist:
-	@BUILD_TAGS='$(BUILD_TAGS)' $(CURDIR)/scripts/dist_mobile.sh $(VERSION)
+	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist_mobile.sh'"
 
 tests:  test
 
 test:
-	go test -count=1 -tags=unit ./...
+	glide novendor | xargs go test -count=1 -tags=unit
 
 flagtest:
-	go test -count=1 -run TestFlagEmpty ./...
+	glide novendor | xargs go test -count=1 -run TestFlagEmpty
 
 extratests:
-	 go test -count=1 -run Extra ./...
+	glide novendor | xargs go test -count=1 -run Extra
 
 alltests:
-	go test -count=1 ./...
+	glide novendor | xargs go test -count=1 
  
 lint:
-	golint ./...
-
-doc:
-	GO111MODULE=off godoc -play -goroot .
+	glide novendor | xargs golint
 
 .PHONY: vendor install build dist test flagtest extratests alltests tests mobile-dist

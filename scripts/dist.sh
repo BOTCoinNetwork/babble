@@ -1,16 +1,15 @@
 #!/bin/bash
 set -e
 
-# VERSION is used to name the build files. If a string is passed as a parameter
-# to this script, it will be used as the VERSION. Otherwise, we use a descriptor
-# of the git commit - "<branch>_<commit-hash>"
-VERSION=${1:-}
-
-if [ -z "$VERSION" ]; then
-  VERSION="$(git rev-parse --abbrev-ref HEAD)_$(git rev-parse HEAD)"
+# Get the version from the environment, or try to figure it out.
+if [ -z $VERSION ]; then
+	VERSION=$(awk -F\" '/Version =/ { print $2; exit }' < src/version/version.go)
 fi
-
-echo "==> Building version: $VERSION..."
+if [ -z "$VERSION" ]; then
+    echo "Please specify a version."
+    exit 1
+fi
+echo "==> Building version $VERSION..."
 
 # Get the parent directory of where this script is.
 SOURCE="${BASH_SOURCE[0]}"
@@ -31,7 +30,7 @@ docker run --rm  \
     -e "BUILD_TAGS=$BUILD_TAGS" \
     -v "$(pwd)":/go/src/github.com/BOTCoinNetwork/babble \
     -w /go/src/github.com/BOTCoinNetwork/babble \
-    mosaicnetworks/glider:0.0.5 ./scripts/dist_build.sh
+    mosaicnetworks/glider:0.0.4 ./scripts/dist_build.sh
 
 # Add "babble" and $VERSION prefix to package name.
 rm -rf ./build/dist

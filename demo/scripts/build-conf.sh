@@ -9,10 +9,9 @@
 set -e
 
 N=${1:-4}
-WEBRTC=${2:-false}
-DEST=${3:-"$PWD/conf"}
-IPBASE=${4:-172.77.5.}
-PORT=${5:-1337}
+DEST=${2:-"$PWD/conf"}
+IPBASE=${3:-172.77.5.}
+PORT=${4:-1337}
 
 for i in $(seq 1 $N)
 do
@@ -36,11 +35,7 @@ do
     fi
 
     printf "\t{\n" >> $PFILE
-    if "$WEBRTC"; then
-        printf "\t\t\"NetAddr\":\"$(cat $DEST/node$i/key.pub)\",\n" >> $PFILE
-    else
-        printf "\t\t\"NetAddr\":\"$(cat $DEST/node$i/addr)\",\n" >> $PFILE
-    fi
+    printf "\t\t\"NetAddr\":\"$(cat $DEST/node$i/addr)\",\n" >> $PFILE
     printf "\t\t\"PubKeyHex\":\"$(cat $DEST/node$i/key.pub)\",\n" >> $PFILE
     printf "\t\t\"Moniker\":\"node$i\"\n" >> $PFILE
     printf "\t}%s\n"  $com >> $PFILE
@@ -53,8 +48,5 @@ do
     dest=$DEST/node$i
     cp $DEST/peers.json $dest/
     cp $DEST/peers.json $dest/peers.genesis.json
-    cp $PWD/../src/net/signal/wamp/test_data/cert.pem $dest/cert.pem
 done
-
-
 

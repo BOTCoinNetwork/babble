@@ -1,25 +1,20 @@
-// Package inmem implements an in-memory AppProxy to use Babble directly from Go
-// code.
 package inmem
 
 import (
 	hg "github.com/BOTCoinNetwork/babble/src/hashgraph"
-	"github.com/BOTCoinNetwork/babble/src/node/state"
 	"github.com/BOTCoinNetwork/babble/src/proxy"
 	"github.com/sirupsen/logrus"
 )
 
-// InmemProxy implements the AppProxy interface natively. It requires a
-// ProxyHandler that implements the callbacks that will be called to update the
-// application.
+//InmemProxy implements the AppProxy interface natively
 type InmemProxy struct {
 	handler  proxy.ProxyHandler
 	submitCh chan []byte
 	logger   *logrus.Entry
 }
 
-// NewInmemProxy instantiates an InmemProxy from a set of handlers. If logger is
-// nil, a new one is created.
+// NewInmemProxy instantiates an InmemProxy from a set of handlers.
+// If no logger, a new one is created
 func NewInmemProxy(handler proxy.ProxyHandler,
 	logger *logrus.Entry) *InmemProxy {
 
@@ -40,7 +35,7 @@ func NewInmemProxy(handler proxy.ProxyHandler,
 * SubmitTx                                                                     *
 *******************************************************************************/
 
-// SubmitTx is called by the App to submit a transaction to Babble.
+//SubmitTx is called by the App to submit a transaction to Babble
 func (p *InmemProxy) SubmitTx(tx []byte) {
 	//have to make a copy, or the tx will be garbage collected and weird stuff
 	//happens in transaction pool
@@ -55,13 +50,12 @@ func (p *InmemProxy) SubmitTx(tx []byte) {
 * Implement AppProxy Interface                                                 *
 *******************************************************************************/
 
-// SubmitCh is used internally by Babble to retrieve the channel through which
-// transactions are received from the App.
+//SubmitCh returns the channel of raw transactions
 func (p *InmemProxy) SubmitCh() chan []byte {
 	return p.submitCh
 }
 
-// CommitBlock calls the CommitHandler.
+//CommitBlock calls the commitHandler
 func (p *InmemProxy) CommitBlock(block hg.Block) (proxy.CommitResponse, error) {
 	commitResponse, err := p.handler.CommitHandler(block)
 
@@ -75,11 +69,10 @@ func (p *InmemProxy) CommitBlock(block hg.Block) (proxy.CommitResponse, error) {
 		}).Debug("InmemProxy.CommitBlock")
 
 	}
-
 	return commitResponse, err
 }
 
-// GetSnapshot calls the SnapshotHandler.
+//GetSnapshot calls the snapshotHandler
 func (p *InmemProxy) GetSnapshot(blockIndex int) ([]byte, error) {
 	snapshot, err := p.handler.SnapshotHandler(blockIndex)
 
@@ -92,7 +85,7 @@ func (p *InmemProxy) GetSnapshot(blockIndex int) ([]byte, error) {
 	return snapshot, err
 }
 
-// Restore calls the RestoreHandler.
+//Restore calls the restoreHandler
 func (p *InmemProxy) Restore(snapshot []byte) error {
 	stateHash, err := p.handler.RestoreHandler(snapshot)
 
@@ -102,9 +95,4 @@ func (p *InmemProxy) Restore(snapshot []byte) error {
 	}).Debug("InmemProxy.Restore")
 
 	return err
-}
-
-// OnStateChanged calls the StateChangeHandler.
-func (p *InmemProxy) OnStateChanged(state state.State) error {
-	return p.handler.StateChangeHandler(state)
 }

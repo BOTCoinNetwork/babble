@@ -13,50 +13,48 @@ type pendingRound struct {
 	Decided bool
 }
 
-// roundEvent indicates the witness and fame states of an Event.
-type roundEvent struct {
+// RoundEvent ...
+type RoundEvent struct {
 	Witness bool
 	Famous  common.Trilean
 }
 
-// RoundInfo encapsulates information about a round.
+// RoundInfo ...
 type RoundInfo struct {
-	// CreatedEvents collects the events that were "created" in this round.
-	CreatedEvents map[string]roundEvent
-	// ReceivedEvents collects the events that were "received" in this round.
+	CreatedEvents  map[string]RoundEvent
 	ReceivedEvents []string
 	queued         bool
 	decided        bool
 }
 
-// NewRoundInfo creates a new RoundInfo.
+// NewRoundInfo ...
 func NewRoundInfo() *RoundInfo {
 	return &RoundInfo{
-		CreatedEvents:  make(map[string]roundEvent),
+		CreatedEvents:  make(map[string]RoundEvent),
 		ReceivedEvents: []string{},
 	}
 }
 
-// AddCreatedEvent adds an event to the CreatedEvents map.
+// AddCreatedEvent ...
 func (r *RoundInfo) AddCreatedEvent(x string, witness bool) {
 	_, ok := r.CreatedEvents[x]
 	if !ok {
-		r.CreatedEvents[x] = roundEvent{
+		r.CreatedEvents[x] = RoundEvent{
 			Witness: witness,
 		}
 	}
 }
 
-// AddReceivedEvent adds an event to the ReceivedEvents list.
+// AddReceivedEvent ...
 func (r *RoundInfo) AddReceivedEvent(x string) {
 	r.ReceivedEvents = append(r.ReceivedEvents, x)
 }
 
-// SetFame sets the famous status of an event.
+// SetFame ...
 func (r *RoundInfo) SetFame(x string, f bool) {
 	e, ok := r.CreatedEvents[x]
 	if !ok {
-		e = roundEvent{
+		e = RoundEvent{
 			Witness: true,
 		}
 	}
@@ -70,11 +68,13 @@ func (r *RoundInfo) SetFame(x string, f bool) {
 	r.CreatedEvents[x] = e
 }
 
-// WitnessesDecided returns true if a super-majority of witnesses are decided,
-// and there are no undecided witnesses. Our algorithm relies on the fact that a
-// witness that is not yet known when a super-majority of witnesses are already
-// decided, has no chance of ever being famous. Once a Round is decided it stays
-// decided, even if new witnesses are added after it was first decided.
+/*
+WitnessesDecided returns true if a super-majority of witnesses are decided,
+and there are no undecided witnesses. Our algorithm relies on the fact that a
+witness that is not yet known when a super-majority of witnesses are already
+decided, has no chance of ever being famous. Once a Round is decided it stays
+decided, even if new witnesses are added after it was first decided.
+*/
 func (r *RoundInfo) WitnessesDecided(peerSet *peers.PeerSet) bool {
 	//if the round was already decided, it stays decided no matter what.
 	if r.decided {
@@ -95,7 +95,7 @@ func (r *RoundInfo) WitnessesDecided(peerSet *peers.PeerSet) bool {
 	return r.decided
 }
 
-// Witnesses return witnesses.
+//Witnesses return witnesses
 func (r *RoundInfo) Witnesses() []string {
 	res := []string{}
 	for x, e := range r.CreatedEvents {
@@ -107,7 +107,7 @@ func (r *RoundInfo) Witnesses() []string {
 	return res
 }
 
-// FamousWitnesses returns famous witnesses.
+//FamousWitnesses returns famous witnesses
 func (r *RoundInfo) FamousWitnesses() []string {
 	res := []string{}
 	for x, e := range r.CreatedEvents {
@@ -118,13 +118,13 @@ func (r *RoundInfo) FamousWitnesses() []string {
 	return res
 }
 
-// IsDecided returns true unless the famous status is undecided.
+// IsDecided ...
 func (r *RoundInfo) IsDecided(witness string) bool {
 	w, ok := r.CreatedEvents[witness]
 	return ok && w.Witness && w.Famous != common.Undefined
 }
 
-// Marshal returns the JSON encoding of a RoundInfo.
+// Marshal ...
 func (r *RoundInfo) Marshal() ([]byte, error) {
 	b := new(bytes.Buffer)
 	jh := new(codec.JsonHandle)
@@ -138,7 +138,7 @@ func (r *RoundInfo) Marshal() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// Unmarshal marshalls a JSON encoded RoundInfo.
+// Unmarshal ...
 func (r *RoundInfo) Unmarshal(data []byte) error {
 	b := bytes.NewBuffer(data)
 	jh := new(codec.JsonHandle)
@@ -148,7 +148,7 @@ func (r *RoundInfo) Unmarshal(data []byte) error {
 	return dec.Decode(r)
 }
 
-// IsQueued returns true if the RoundInfo is marked as queued.
+// IsQueued ...
 func (r *RoundInfo) IsQueued() bool {
 	return r.queued
 }

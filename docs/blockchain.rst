@@ -155,15 +155,14 @@ Block Structure
 
   Block: {
       Body:{
-          Index                       int                          // block index
-	      RoundReceived               int                          // round received of corresponding hashgraph frame
-	      Timestamp                   int64                        // unix timestamp (median of timestamps in round-received famous witnesses)
-	      StateHash                   []byte                       // root hash of the application after applying block payload; to be populated by application Commit
-	      FrameHash                   []byte                       // hash of corresponding hashgraph frame
-	      PeersHash                   []byte                       // hash of peer-set
-	      Transactions                [][]byte                     // transaction payload
-	      InternalTransactions        []InternalTransaction        // internal transaction payload (add/remove peers)
-	      InternalTransactionReceipts []InternalTransactionReceipt // receipts for internal transactions; to be populated by application Commit
+          Index                       int
+          RoundReceived               int
+          StateHash                   []byte
+          FrameHash                   []byte
+          PeersHash                   []byte
+          Transactions                [][]byte
+          InternalTransactions        []InternalTransaction
+          InternalTransactionReceipts []InternalTransactionReceipt
       }
       Signatures: map[string]string
   }
@@ -172,20 +171,12 @@ Blocks contain a body and a set of signatures. Signatures are based on the hash
 of the body; which is enough to verify the entire block because it contains a
 digital fingerprint of the body.
 
-The Body's *RoundReceived* corresponds to the *RoundReceived* of the hashgraph 
-Events who's transactions are included in the block; it serves the purpose of 
-tying back to the underlying hashgraph. We do not produce a block when all the 
-Events of a *Round Received* are empty. Hence, two consecutive blocks may have 
-non-consecutive RoundReceived values and we use an additional property to index 
-the blocks.
-
-The 'Timestamp' is a Unix timestamp (number of seconds since January 1st, 1970)
-corresponding to the median of the timestamps of the famous witnesses in the 
-frame's round-received. Upon creating a hashgraph Event, a Unix timestamp is 
-automatically added to it using the creator's system clock. The Block's 
-timestamp is the median of the timestamps included in the famous witnesses of
-the block's round-received. Note that nodes may have non-synchronised clocks, 
-and may purposefuly tinker with their clocks to bias the block timestamp.
+The header's *RoundReceived* corresponds to the *RoundReceived* of the
+hashgraph Events who's transactions are included in the block; it serves the
+purpose of tying back to the underlying hashgraph. We do not produce a block
+when all the Events of a *Round Received* are empty. Hence, two consecutive
+blocks may have non-consecutive RoundReceived values and we use an additional
+property to index the blocks.
 
 The FrameHash corresponds to the Frame in the hashgraph at RoundReceived. It is
 used in the FastSync protocol to verify the relationship between the Block and

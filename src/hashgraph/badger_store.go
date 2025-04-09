@@ -1,14 +1,11 @@
-// +build !mobile
-
 package hashgraph
 
 import (
 	"fmt"
 
-	"github.com/dgraph-io/badger"
-	badger_options "github.com/dgraph-io/badger/options"
 	cm "github.com/BOTCoinNetwork/babble/src/common"
 	"github.com/BOTCoinNetwork/babble/src/peers"
+	"github.com/dgraph-io/badger"
 	"github.com/sirupsen/logrus"
 )
 
@@ -39,9 +36,7 @@ func NewBadgerStore(cacheSize int, path string, maintenanceMode bool, logger *lo
 
 	opts := badger.DefaultOptions(path).
 		WithSyncWrites(false).
-		WithTruncate(true).
-		WithTableLoadingMode(badger_options.FileIO).
-		WithValueLogLoadingMode(badger_options.FileIO)
+		WithTruncate(true)
 
 	if logger != nil {
 		sub := logger.WithFields(logrus.Fields{"ns": "badger"})
@@ -167,7 +162,7 @@ func (s *BadgerStore) FirstRound(id uint32) (int, bool) {
 	return s.inmemStore.FirstRound(id)
 }
 
-// RepertoireByPubKey returns a map of peers by public-key.
+// RepertoireByPubKey returns map of peers by public-key.
 func (s *BadgerStore) RepertoireByPubKey() map[string]*peers.Peer {
 	return s.inmemStore.RepertoireByPubKey()
 }
@@ -486,13 +481,7 @@ func (s *BadgerStore) dbGetPeerSet(round int) (*peers.PeerSet, error) {
 		return nil, err
 	}
 
-	peerSet := new(peers.PeerSet)
-	err = peerSet.Unmarshal(peerSliceBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return peerSet, nil
+	return peers.NewPeerSetFromPeerSliceBytes(peerSliceBytes)
 }
 
 func (s *BadgerStore) dbSetPeerSet(round int, peerSet *peers.PeerSet) error {

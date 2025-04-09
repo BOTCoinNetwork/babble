@@ -22,11 +22,11 @@ func TestMonologue(t *testing.T) {
 
 	genesisPeerSet := clonePeerSet(t, peers.Peers)
 
-	nodes := initNodes(keys, peers, genesisPeerSet, 100000, 1000, 5, false, "inmem", 5*time.Millisecond, false, "", t)
+	nodes := initNodes(keys, peers, genesisPeerSet, 100000, 1000, 5, false, "inmem", 5*time.Millisecond, t)
 	//defer drawGraphs(nodes, t)
 
 	target := 50
-	err := gossip(nodes, target, true)
+	err := gossip(nodes, target, true, 3*time.Second)
 	if err != nil {
 		t.Fatalf("Fatal Error: %v", err)
 	}
@@ -40,12 +40,12 @@ func TestJoinRequest(t *testing.T) {
 
 	genesisPeerSet := clonePeerSet(t, peerSet.Peers)
 
-	nodes := initNodes(keys, peerSet, genesisPeerSet, 1000000, 1000, 5, false, "inmem", 5*time.Millisecond, false, "", t)
+	nodes := initNodes(keys, peerSet, genesisPeerSet, 1000000, 1000, 5, false, "inmem", 5*time.Millisecond, t)
 	defer shutdownNodes(nodes)
 	//defer drawGraphs(nodes, t)
 
 	target := 30
-	err := gossip(nodes, target, false)
+	err := gossip(nodes, target, false, 3*time.Second)
 	if err != nil {
 		t.Fatalf("Fatal Error: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestJoinRequest(t *testing.T) {
 		"monika",
 	)
 
-	newNode := newNode(peer, key, peerSet, genesisPeerSet, 1000, 1000, 5, false, "inmem", 5*time.Millisecond, false, "", t)
+	newNode := newNode(peer, key, peerSet, genesisPeerSet, 1000, 1000, 5, false, "inmem", 5*time.Millisecond, t)
 	defer newNode.Shutdown()
 
 	err = newNode.join()
@@ -68,14 +68,14 @@ func TestJoinRequest(t *testing.T) {
 
 	//Gossip some more
 	secondTarget := target + 30
-	err = bombardAndWait(nodes, secondTarget)
+	err = bombardAndWait(nodes, secondTarget, 6*time.Second)
 	if err != nil {
 		t.Fatalf("Fatal Error: %v", err)
 	}
 
 	checkGossip(nodes, 0, t)
 	checkPeerSets(nodes, t)
-	verifyNewPeerSet(nodes, newNode.core.acceptedRound, 5, t)
+	verifyNewPeerSet(nodes, newNode.core.AcceptedRound, 5, t)
 }
 
 func TestLeaveRequest(t *testing.T) {
@@ -84,12 +84,12 @@ func TestLeaveRequest(t *testing.T) {
 
 	genesisPeerSet := clonePeerSet(t, peerSet.Peers)
 
-	nodes := initNodes(keys, peerSet, genesisPeerSet, 1000000, 1000, 5, false, "inmem", 5*time.Millisecond, false, "", t)
+	nodes := initNodes(keys, peerSet, genesisPeerSet, 1000000, 1000, 5, false, "inmem", 5*time.Millisecond, t)
 	defer shutdownNodes(nodes)
 	//defer drawGraphs(nodes, t)
 
 	target := 30
-	err := gossip(nodes, target, false)
+	err := gossip(nodes, target, false, 3*time.Second)
 	if err != nil {
 		t.Fatalf("Fatal Error: %v", err)
 	}
@@ -104,14 +104,14 @@ func TestLeaveRequest(t *testing.T) {
 
 	//Gossip some more
 	secondTarget := target + 50
-	err = bombardAndWait(nodes[:3], secondTarget)
+	err = bombardAndWait(nodes[:3], secondTarget, 6*time.Second)
 	if err != nil {
 		t.Fatalf("Fatal Error: %v", err)
 	}
 
 	checkGossip(nodes[0:3], 0, t)
 	checkPeerSets(nodes[0:3], t)
-	verifyNewPeerSet(nodes[0:3], leavingNode.core.removedRound, 3, t)
+	verifyNewPeerSet(nodes[0:3], leavingNode.core.RemovedRound, 3, t)
 }
 
 func TestJoinFull(t *testing.T) {
@@ -120,11 +120,11 @@ func TestJoinFull(t *testing.T) {
 	f := func(fastSync bool) {
 		genesisPeerSet := clonePeerSet(t, peerSet.Peers)
 
-		initialNodes := initNodes(keys, peerSet, genesisPeerSet, 1000000, 400, 5, fastSync, "inmem", 10*time.Millisecond, false, "", t)
+		initialNodes := initNodes(keys, peerSet, genesisPeerSet, 1000000, 400, 5, fastSync, "inmem", 10*time.Millisecond, t)
 		defer shutdownNodes(initialNodes)
 
 		target := 30
-		err := gossip(initialNodes, target, false)
+		err := gossip(initialNodes, target, false, 6*time.Second)
 		if err != nil {
 			t.Fatalf("Fatal Error: %v", err)
 		}
@@ -137,7 +137,7 @@ func TestJoinFull(t *testing.T) {
 			"monika",
 		)
 
-		newNode := newNode(peer, key, peerSet, genesisPeerSet, 1000000, 400, 5, fastSync, "inmem", 10*time.Millisecond, false, "", t)
+		newNode := newNode(peer, key, peerSet, genesisPeerSet, 1000000, 400, 5, fastSync, "inmem", 10*time.Millisecond, t)
 		defer newNode.Shutdown()
 
 		newNode.RunAsync(true)
@@ -148,7 +148,7 @@ func TestJoinFull(t *testing.T) {
 
 		//Gossip some more
 		secondTarget := target + 50
-		err = bombardAndWait(nodes, secondTarget)
+		err = bombardAndWait(nodes, secondTarget, 10*time.Second)
 		if err != nil {
 			t.Fatalf("Fatal Error: %v", err)
 		}
@@ -156,7 +156,7 @@ func TestJoinFull(t *testing.T) {
 		start := newNode.core.hg.FirstConsensusRound
 		checkGossip(nodes, *start, t)
 		checkPeerSets(nodes, t)
-		verifyNewPeerSet(nodes, newNode.core.acceptedRound, 5, t)
+		verifyNewPeerSet(nodes, newNode.core.AcceptedRound, 5, t)
 	}
 
 	t.Run("FastSync enabled", func(t *testing.T) { f(true) })
@@ -176,13 +176,13 @@ func TestRejoin(t *testing.T) {
 
 		genesisPeerSet := clonePeerSet(t, peers.Peers)
 
-		nodes := initNodes(keys, peers, genesisPeerSet, 50000, 50, 5, false, store, 10*time.Millisecond, false, "", t)
+		nodes := initNodes(keys, peers, genesisPeerSet, 50000, 50, 5, false, store, 10*time.Millisecond, t)
 		//defer drawGraphs(nodes, t)
 		defer shutdownNodes(nodes)
 
 		// Start 2 nodes and let them create some blocks
 		target := 50
-		err := gossip(nodes, target, false)
+		err := gossip(nodes, target, false, 3*time.Second)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -196,7 +196,7 @@ func TestRejoin(t *testing.T) {
 		}
 
 		// Let node1 create more blocks alone
-		err = bombardAndWait(nodes[:1], 2*target)
+		err = bombardAndWait(nodes[:1], 2*target, 6*time.Second)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -207,7 +207,7 @@ func TestRejoin(t *testing.T) {
 		nodes[1].RunAsync(true)
 
 		// Let both nodes create more blocks
-		err = bombardAndWait(nodes, 3*target)
+		err = bombardAndWait(nodes, 3*target, 20*time.Second)
 		if err != nil {
 			t.Fatalf("ERR: %s", err)
 		}

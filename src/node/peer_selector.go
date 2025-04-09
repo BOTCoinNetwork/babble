@@ -6,45 +6,47 @@ import (
 	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
-// peerSelector defines an interface for selecting the next gossip peer based
-// on a list of peers.
-type peerSelector interface {
-	getPeers() *peers.PeerSet
-	updateLast(peer uint32, connected bool) bool
-	next() *peers.Peer
+// PeerSelector defines and interface for Peer Selectors
+type PeerSelector interface {
+	Peers() *peers.PeerSet
+	UpdateLast(peer uint32, connected bool) bool
+	Next() *peers.Peer
 }
 
-// randomPeerSelector implements the peerSelector interface and selects the next
-// peer at random. It also keeps track of each peer's connection status.
-type randomPeerSelector struct {
+//+++++++++++++++++++++++++++++++++++++++
+//RANDOM
+
+// RandomPeerSelector defines a struct which controls the random selection of
+// peers
+type RandomPeerSelector struct {
 	peers                *peers.PeerSet
 	selfID               uint32
-	selectablePeersMap   map[uint32]*peerSelectorItem
+	selectablePeersMap   map[uint32]*PeerSelectorItem
 	selectablePeersSlice []uint32
 	last                 uint32
 }
 
-// peerSelectorItem is a wrapper around a Peer that keeps track of the
+// PeerSelectorItem is a wrapper around a Peer that keeps track of the
 // connection status
-type peerSelectorItem struct {
-	peer      *peers.Peer
-	connected bool
+type PeerSelectorItem struct {
+	Peer      *peers.Peer
+	Connected bool
 }
 
-// newRandomPeerSelector creates a new randomPeerSelector from a PeerSet and
-// excludes any peer identified by selfID.
-func newRandomPeerSelector(peerSet *peers.PeerSet, selfID uint32) *randomPeerSelector {
+// NewRandomPeerSelector is a factory method that returns a new instance of
+// RandomPeerSelector
+func NewRandomPeerSelector(peerSet *peers.PeerSet, selfID uint32) *RandomPeerSelector {
 	_, otherPeers := peers.ExcludePeer(peerSet.Peers, selfID)
 
-	selectablePeersMap := map[uint32]*peerSelectorItem{}
+	selectablePeersMap := map[uint32]*PeerSelectorItem{}
 	selectablePeersSlice := []uint32{}
 
 	for _, p := range otherPeers {
-		selectablePeersMap[p.ID()] = &peerSelectorItem{peer: p, connected: false}
+		selectablePeersMap[p.ID()] = &PeerSelectorItem{Peer: p, Connected: false}
 		selectablePeersSlice = append(selectablePeersSlice, p.ID())
 	}
 
-	return &randomPeerSelector{
+	return &RandomPeerSelector{
 		peers:                peerSet,
 		selfID:               selfID,
 		selectablePeersMap:   selectablePeersMap,
@@ -52,20 +54,20 @@ func newRandomPeerSelector(peerSet *peers.PeerSet, selfID uint32) *randomPeerSel
 	}
 }
 
-// getPeers returns the current set of peers.
-func (ps *randomPeerSelector) getPeers() *peers.PeerSet {
+//Peers returns the current set of peers
+func (ps *RandomPeerSelector) Peers() *peers.PeerSet {
 	return ps.peers
 }
 
-// updateLast sets the last peer and updates its connection status.
-func (ps *randomPeerSelector) updateLast(peer uint32, connected bool) (newConnection bool) {
+//UpdateLast sets the last peer and updates its connection status
+func (ps *RandomPeerSelector) UpdateLast(peer uint32, connected bool) (newConnection bool) {
 	ps.last = peer
 
-	// The peer could have been removed in by an InternalTransaction.
+	// The peer could have been removed in by an InternalTransaction
 	if _, ok := ps.selectablePeersMap[peer]; ok {
-		old := ps.selectablePeersMap[peer].connected
+		old := ps.selectablePeersMap[peer].Connected
 
-		ps.selectablePeersMap[peer].connected = connected
+		ps.selectablePeersMap[peer].Connected = connected
 
 		if !old && connected {
 			return true
@@ -75,8 +77,8 @@ func (ps *randomPeerSelector) updateLast(peer uint32, connected bool) (newConnec
 	return false
 }
 
-// next returns the next peer.
-func (ps *randomPeerSelector) next() *peers.Peer {
+//Next returns the next peer
+func (ps *RandomPeerSelector) Next() *peers.Peer {
 
 	if len(ps.selectablePeersSlice) == 0 {
 		return nil
@@ -97,7 +99,7 @@ func (ps *randomPeerSelector) next() *peers.Peer {
 		nextID = otherPeers[rand.Intn(len(otherPeers))]
 	}
 
-	peer := ps.selectablePeersMap[nextID].peer
+	peer := ps.selectablePeersMap[nextID].Peer
 
 	return peer
 }

@@ -16,7 +16,7 @@ import (
 // MAXBLOCKS is the maximum number of blocks returned by the /blocks/ endpoint
 const MAXBLOCKS = 50
 
-// Service is the object that serves the HTTP Service API.
+// Service ...
 type Service struct {
 	sync.Mutex
 
@@ -26,7 +26,7 @@ type Service struct {
 	logger      *logrus.Entry
 }
 
-// NewService instantiates a Service linked to a Babble node and a bind address.
+// NewService ...
 func NewService(bindAddress string, n *node.Node, logger *logrus.Entry) *Service {
 	service := Service{
 		bindAddress: bindAddress,
@@ -73,8 +73,8 @@ func (s *Service) makeHandler(fn func(http.ResponseWriter, *http.Request)) http.
 // Serve calls ListenAndServe. This is a blocking call. It is not necessary to
 // call Serve when Babble is used in-memory and another server has already been
 // started with the DefaultServerMux and the same address:port combination.
-// Indeed, the service constructor has already registered the API handlers with
-// DefaultServerMux.
+// Indeed, Babble API handlers have already been registered when the service was
+// instantiated.
 func (s *Service) Serve() {
 	s.logger.WithField("bind_address", s.bindAddress).Debug("Serving Babble API")
 
@@ -85,7 +85,7 @@ func (s *Service) Serve() {
 	}
 }
 
-// GetStats returns a list of stats about the node's internal state.
+// GetStats ...
 func (s *Service) GetStats(w http.ResponseWriter, r *http.Request) {
 	stats := s.node.GetStats()
 
@@ -94,7 +94,7 @@ func (s *Service) GetStats(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stats)
 }
 
-// GetBlock returns a single Block by block index.
+// GetBlock - DEPRECATED used /blocks/ instead
 func (s *Service) GetBlock(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/block/"):]
 
@@ -123,13 +123,15 @@ func (s *Service) GetBlock(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(block)
 }
 
-// GetBlocks will fetch an array of blocks starting at {startIndex} and finishing
-// {counts<=MAXBLOCKS} blocks later. If no count param is provided it will just
-// return the index requested rather than listing blocks.
-//
-//  GET /blocks/{startIndex}?count={x}
-//  example: /blocks/0?count=50
-//  returns: JSON []hashgraph.Block
+/*
+GetBlocks will fetch an array of blocks starting at {startIndex} and finishing
+{counts<=MAXBLOCKS} blocks later. If no count param is provided it will just
+return the index requested rather than listing blocks.
+
+GET /blocks/{startIndex}?count={x}
+example: /blocks/0?count=50
+returns: JSON []hashgraph.Block
+*/
 func (s *Service) GetBlocks(w http.ResponseWriter, r *http.Request) {
 	// parse starting block index
 	qs := r.URL.Path[len("/blocks/"):]
@@ -189,8 +191,7 @@ func (s *Service) GetBlocks(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(blocks)
 }
 
-// GetGraph returns information about the underlying hashgraph, which can be
-// used to produce a visual representation.
+// GetGraph ...
 func (s *Service) GetGraph(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -201,19 +202,23 @@ func (s *Service) GetGraph(w http.ResponseWriter, r *http.Request) {
 	encoder.Encode(res)
 }
 
-// GetPeers returns the node's current peers, which is not necessarily
-// equivalent to the current validator-set.
-//
-//  GET /peers
-//  returns: JSON []peers.Peer
+/*
+GetPeers returns the node's current peers, which is not necessarily equivalent
+to the current validator-set.
+
+GET /peers
+returns: JSON []peers.Peer
+*/
 func (s *Service) GetPeers(w http.ResponseWriter, r *http.Request) {
 	returnPeerSet(w, r, s.node.GetPeers())
 }
 
-// GetGenesisPeers returns the genesis validator-set
-//
-//  Get /genesispeers
-//  returns: JSON []peers.Peer
+/*
+GetGenesisPeers returns the genesis validator-set
+
+Get /genesispeers
+returns: JSON []peers.Peer
+*/
 func (s *Service) GetGenesisPeers(w http.ResponseWriter, r *http.Request) {
 	ps, err := s.node.GetValidatorSet(0)
 	if err != nil {
@@ -224,11 +229,13 @@ func (s *Service) GetGenesisPeers(w http.ResponseWriter, r *http.Request) {
 	returnPeerSet(w, r, ps)
 }
 
-// GetValidatorSet returns the validator-set associated to a specific hashgraph
-// round. If no round is specified, it returns the current validator-set.
-//
-//  Get /validators/{round}
-//  returns: JSON []peers.Peer
+/*
+GetValidatorSet returns the validator-set associated to a specific hashgraph
+round. If no round is specified, it returns the current validator-set.
+
+Get /validators/{round}
+returns: JSON []peers.Peer
+*/
 func (s *Service) GetValidatorSet(w http.ResponseWriter, r *http.Request) {
 	round := s.node.GetLastConsensusRoundIndex()
 
@@ -253,12 +260,13 @@ func (s *Service) GetValidatorSet(w http.ResponseWriter, r *http.Request) {
 	returnPeerSet(w, r, validators)
 }
 
-// GetAllValidatorSets returns the entire map of round to validator-sets which
-// represents the history of the validator-set from the inception of the
-// network.
-//
-//  Get /history
-//  returns: JSON map[int][]peers.Peer
+/*
+GetAllValidatorSets returns the entire map of round to validator-sets which
+represents the history of the validator-set from the inception of the network.
+
+Get /history
+returns: JSON map[int][]peers.Peer
+*/
 func (s *Service) GetAllValidatorSets(w http.ResponseWriter, r *http.Request) {
 	allPeerSets, err := s.node.GetAllValidatorSets()
 	if err != nil {

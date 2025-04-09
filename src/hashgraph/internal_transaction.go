@@ -14,17 +14,17 @@ import (
 InternalTransactionBody
 *******************************************************************************/
 
-// TransactionType denotes the nature of an InternalTransaction
+// TransactionType ...
 type TransactionType uint8
 
 const (
-	// PEER_ADD is used to add a peer.
+	// PEER_ADD ...
 	PEER_ADD TransactionType = iota
-	// PEER_REMOVE is used to remove a peer.
+	// PEER_REMOVE ...
 	PEER_REMOVE
 )
 
-// String returns the string representation of a TransactionType.
+// String ...
 func (t TransactionType) String() string {
 	switch t {
 	case PEER_ADD:
@@ -36,13 +36,13 @@ func (t TransactionType) String() string {
 	}
 }
 
-// InternalTransactionBody contains the payload of an InternalTransaction.
+// InternalTransactionBody ...
 type InternalTransactionBody struct {
-	Type TransactionType // Add or Remove
-	Peer peers.Peer      // Targeted Peer
+	Type TransactionType
+	Peer peers.Peer
 }
 
-// Marshal returns the JSON encoding of an InternalTransaction.
+//Marshal - json encoding of body
 func (i *InternalTransactionBody) Marshal() ([]byte, error) {
 	var b bytes.Buffer
 
@@ -55,7 +55,7 @@ func (i *InternalTransactionBody) Marshal() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// Hash returns the SHA256 hash of the InternalTransactionBody,
+//Hash returns the SHA256 hash of the InternalTransactionBody,
 func (i *InternalTransactionBody) Hash() ([]byte, error) {
 	hashBytes, err := i.Marshal()
 	if err != nil {
@@ -64,35 +64,30 @@ func (i *InternalTransactionBody) Hash() ([]byte, error) {
 	return crypto.SHA256(hashBytes), nil
 }
 
-// InternalTransaction represents a special type of transaction that is actually
-// interpreted by Babble to act on its own internal state, whereas regular
-// transactions are app-specific and are never interpreted by Babble. In
-// particular, InternalTransactions are used to add or remove validators.
-// InternalTransactions also go through consensus.
+// InternalTransaction ...
 type InternalTransaction struct {
 	Body      InternalTransactionBody
 	Signature string
 }
 
-// NewInternalTransaction creates a new InternalTransaction.
+// NewInternalTransaction ...
 func NewInternalTransaction(tType TransactionType, peer peers.Peer) InternalTransaction {
 	return InternalTransaction{
 		Body: InternalTransactionBody{Type: tType, Peer: peer},
 	}
 }
 
-// NewInternalTransactionJoin creates a new InternalTransaction to add a peer.
+// NewInternalTransactionJoin ...
 func NewInternalTransactionJoin(peer peers.Peer) InternalTransaction {
 	return NewInternalTransaction(PEER_ADD, peer)
 }
 
-// NewInternalTransactionLeave creates a new InternalTransaction to remove a
-// peer.
+// NewInternalTransactionLeave ...
 func NewInternalTransactionLeave(peer peers.Peer) InternalTransaction {
 	return NewInternalTransaction(PEER_REMOVE, peer)
 }
 
-// Marshal returns the JSON encoding of an InternalTransaction.
+// Marshal ...
 func (t *InternalTransaction) Marshal() ([]byte, error) {
 	var b bytes.Buffer
 
@@ -105,7 +100,7 @@ func (t *InternalTransaction) Marshal() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// Unmarshal parses an InternalTransaction from JSON.
+// Unmarshal ...
 func (t *InternalTransaction) Unmarshal(data []byte) error {
 	b := bytes.NewBuffer(data)
 
@@ -118,7 +113,7 @@ func (t *InternalTransaction) Unmarshal(data []byte) error {
 	return nil
 }
 
-// Sign returns the ecdsa signature of the SHA256 hash of the transaction's body
+//Sign returns the ecdsa signature of the SHA256 hash of the transaction's body
 func (t *InternalTransaction) Sign(privKey *ecdsa.PrivateKey) error {
 	signBytes, err := t.Body.Hash()
 	if err != nil {
@@ -135,7 +130,7 @@ func (t *InternalTransaction) Sign(privKey *ecdsa.PrivateKey) error {
 	return err
 }
 
-// Verify verifies the transaction's signature.
+// Verify ...
 func (t *InternalTransaction) Verify() (bool, error) {
 	pubBytes := t.Body.Peer.PubKeyBytes()
 	pubKey := keys.ToPublicKey(pubBytes)
@@ -153,15 +148,15 @@ func (t *InternalTransaction) Verify() (bool, error) {
 	return keys.Verify(pubKey, signBytes, r, s), nil
 }
 
-// HashString returns a string representation of the body's hash. It is used in
-// node/core as a key in a map to keep track of InternalTransactions as they go
-// through consensus.
+//HashString returns a string representation of the body's hash. It is used in
+//node/core as a key in a map to keep track of InternalTransactions as they are
+//being processed asynchronously by the consensus and application.
 func (t *InternalTransaction) HashString() string {
 	hash, _ := t.Body.Hash()
 	return string(hash)
 }
 
-// AsAccepted returns a receipt to accept an InternalTransaction.
+//AsAccepted returns a receipt to accept an InternalTransaction
 func (t *InternalTransaction) AsAccepted() InternalTransactionReceipt {
 	return InternalTransactionReceipt{
 		InternalTransaction: *t,
@@ -169,7 +164,7 @@ func (t *InternalTransaction) AsAccepted() InternalTransactionReceipt {
 	}
 }
 
-// AsRefused return a receipt to refuse an InternalTransaction.
+//AsRefused return a receipt to refuse an InternalTransaction
 func (t *InternalTransaction) AsRefused() InternalTransactionReceipt {
 	return InternalTransactionReceipt{
 		InternalTransaction: *t,
@@ -181,8 +176,8 @@ func (t *InternalTransaction) AsRefused() InternalTransactionReceipt {
 InternalTransactionReceipt
 *******************************************************************************/
 
-// InternalTransactionReceipt records the decision by the application to accept
-// or refuse an InternalTransaction.
+//InternalTransactionReceipt records the decision by the application to accept
+//or refuse and InternalTransaction
 type InternalTransactionReceipt struct {
 	InternalTransaction InternalTransaction
 	Accepted            bool

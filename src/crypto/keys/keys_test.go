@@ -11,6 +11,7 @@ import (
 )
 
 func TestSimpleKeyfile(t *testing.T) {
+
 	// Create a test dir
 	os.Mkdir("test_data", os.ModeDir|0700)
 	dir, err := ioutil.TempDir("test_data", "babble")

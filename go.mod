@@ -6,7 +6,6 @@ require (
 	github.com/btcsuite/btcd v0.0.0-20190523000118-16327141da8c
 	github.com/dgraph-io/badger v1.6.0
 	github.com/gammazero/nexus/v3 v3.0.0
-	github.com/jonknight73/badger v0.0.0-20200218142835-fa9c019859f6
 	github.com/pion/datachannel v1.4.14
 	github.com/pion/webrtc/v2 v2.2.0
 	github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5

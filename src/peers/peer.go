@@ -9,20 +9,16 @@ import (
 	"github.com/BOTCoinNetwork/babble/src/crypto/keys"
 )
 
-// Peer is a struct that holds Peer data.
+// Peer is a struct that holds Peer data
 type Peer struct {
-	// NetAddr is the IP:PORT of the Babble node. Not necessary with WebRTC.
-	NetAddr string
-	// PubKeyHex is the hexadecimal representation of the peer's public key.
+	NetAddr   string
 	PubKeyHex string
-	// Moniker is an optional friendly name for the peer. It does not need to be
-	// unique.
-	Moniker string
+	Moniker   string
 
 	id uint32
 }
 
-// NewPeer instantiates a Peer.
+// NewPeer is a factory method for creating a new Peer instance
 func NewPeer(pubKeyHex, netAddr, moniker string) *Peer {
 	peer := &Peer{
 		PubKeyHex: pubKeyHex,
@@ -32,11 +28,11 @@ func NewPeer(pubKeyHex, netAddr, moniker string) *Peer {
 	return peer
 }
 
-// ID returns an ID for the peer, calculated from the public key.
+// ID returns an ID for the peer, calculating a hash is one is not available
 func (p *Peer) ID() uint32 {
 	if p.id == 0 {
 		pubKeyBytes := p.PubKeyBytes()
-		p.id = keys.PublicKeyID(pubKeyBytes)
+		p.id = keys.Hash32(pubKeyBytes)
 	}
 	return p.id
 }
@@ -47,14 +43,15 @@ func (p *Peer) PubKeyString() string {
 	return strings.ToUpper(p.PubKeyHex)
 }
 
-// PubKeyBytes returns the byte slice representation of the Peer's public key.
+// PubKeyBytes converts hex string representation of the public key and returns
+// a byte array
 func (p *Peer) PubKeyBytes() []byte {
 	res, _ := common.DecodeFromString(p.PubKeyHex)
 	return res
 }
 
-// Marshal marshals the Peer object. Note that this excludes the id field,
-// forcing consumers to recalculate it.
+// Marshal marshals the json representation of the peer. Note that this excludes
+// the id field, forcing consumers to recalculate it.
 func (p *Peer) Marshal() ([]byte, error) {
 	var b bytes.Buffer
 
@@ -67,7 +64,7 @@ func (p *Peer) Marshal() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// Unmarshal unmarshals a byte slice into a Peer object.
+// Unmarshal generates a JSON representation of the peer
 func (p *Peer) Unmarshal(data []byte) error {
 	b := bytes.NewBuffer(data)
 

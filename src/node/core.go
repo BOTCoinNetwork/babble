@@ -14,9 +14,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// core is the object that is used by Node to manipulate the hashgraph
-// indirectly.
-type core struct {
+//Core is the core Node object
+type Core struct {
 
 	// validator is a wrapper around the private-key controlling this node.
 	validator *Validator
@@ -25,8 +24,8 @@ type core struct {
 	// data reside.
 	hg *hg.Hashgraph
 
-	// genesisPeers is the validator-set that the hashgraph was initialised
-	// with.
+	// genesisPeers is the validator-set that the hashgraph/blockchain was
+	// initialised with
 	genesisPeers *peers.PeerSet
 
 	// validators reflects the latest validator-set used in the hashgraph
@@ -38,30 +37,30 @@ type core struct {
 	peers *peers.PeerSet
 
 	// peerSelector is the object that decides which peer to talk to next.
-	peerSelector peerSelector
+	peerSelector PeerSelector
 	selectorLock sync.Mutex
 
 	// Hash and Index of this instance's head Event
-	head string
-	seq  int
+	Head string
+	Seq  int
 
-	// acceptedRound is the first round at which the node's last join request
+	// AcceptedRound is the first round at which the node's last join request
 	// (InternalTransaction) takes effect. A node will not create SelfEvents
 	// before reaching AcceptedRound. Default -1.
-	acceptedRound int
+	AcceptedRound int
 
-	// removedRound is the round at which the node's last leave request takes
+	// RemovedRound is the round at which the node's last leave request takes
 	// effect (if there is one). Default -1.
-	removedRound int
+	RemovedRound int
 
-	// targetRound is the minimum Consensus Round that the node needs to reach.
+	// TargetRound is the minimum Consensus Round that the node needs to reach.
 	// It is useful to set this value to a joining peer's accepted-round to
 	// prevent them from having to wait.
-	targetRound int
+	TargetRound int
 
-	// lastPeerChangeRound is updated whenever a join / leave request is
+	// LastPeerChangeRound is updated whenever a join / leave request is
 	// accepted
-	lastPeerChangeRound int
+	LastPeerChangeRound int
 
 	// Events that are not tied to this node's Head. This is managed by the Sync
 	// method. If the gossip condition is false (there is nothing interesting to
@@ -86,31 +85,25 @@ type core struct {
 	// proxyCommitCallback is called by the hashgraph when a block is committed
 	proxyCommitCallback proxy.CommitCallback
 
-	// maintenanceMode is passed through the constructor to indicate whether the
-	// user of core is in maintenance mode. This is used here to disable leave
-	// requests when a node is in maintenance mode
-	maintenanceMode bool
-
 	// promises keeps track of pending JoinRequests while the corresponding
 	// InternalTransactions go through consensus asynchronously.
-	promises map[string]*joinPromise
+	promises map[string]*JoinPromise
 
 	logger *logrus.Entry
 }
 
-// newCore creates and initialises a new Core object.
-func newCore(
+// NewCore is a factory method that returns a new Core object
+func NewCore(
 	validator *Validator,
 	peers *peers.PeerSet,
 	genesisPeers *peers.PeerSet,
 	store hg.Store,
 	proxyCommitCallback proxy.CommitCallback,
-	maintenanceMode bool,
-	logger *logrus.Entry) *core {
+	logger *logrus.Entry) *Core {
 
-	peerSelector := newRandomPeerSelector(peers, validator.ID())
+	peerSelector := NewRandomPeerSelector(peers, validator.ID())
 
-	core := &core{
+	core := &Core{
 		validator:               validator,
 		proxyCommitCallback:     proxyCommitCallback,
 		genesisPeers:            genesisPeers,
@@ -120,19 +113,18 @@ func newCore(
 		transactionPool:         [][]byte{},
 		internalTransactionPool: []hg.InternalTransaction{},
 		selfBlockSignatures:     hg.NewSigPool(),
-		promises:                make(map[string]*joinPromise),
+		promises:                make(map[string]*JoinPromise),
 		heads:                   make(map[uint32]*hg.Event),
 		logger:                  logger,
-		head:                    "",
-		seq:                     -1,
-		acceptedRound:           -1,
-		removedRound:            -1,
-		targetRound:             -1,
-		lastPeerChangeRound:     -1,
-		maintenanceMode:         maintenanceMode,
+		Head:                    "",
+		Seq:                     -1,
+		AcceptedRound:           -1,
+		RemovedRound:            -1,
+		TargetRound:             -1,
+		LastPeerChangeRound:     -1,
 	}
 
-	core.hg = hg.NewHashgraph(store, core.commit, logger)
+	core.hg = hg.NewHashgraph(store, core.Commit, logger)
 
 	core.hg.Init(genesisPeers)
 
@@ -140,7 +132,7 @@ func newCore(
 }
 
 // SetHeadAndSeq sets the Head and Seq of a Core object
-func (c *core) setHeadAndSeq() error {
+func (c *Core) SetHeadAndSeq() error {
 	head := ""
 	seq := -1
 
@@ -153,7 +145,7 @@ func (c *core) setHeadAndSeq() error {
 		}
 
 		if last != "" {
-			lastEvent, err := c.getEvent(last)
+			lastEvent, err := c.GetEvent(last)
 			if err != nil {
 				return err
 			}
@@ -165,49 +157,49 @@ func (c *core) setHeadAndSeq() error {
 		c.logger.Debug("Not in repertoire yet.")
 	}
 
-	c.head = head
-	c.seq = seq
+	c.Head = head
+	c.Seq = seq
 
 	c.logger.WithFields(logrus.Fields{
-		"core.Head": c.head,
-		"core.Seq":  c.seq,
+		"core.Head": c.Head,
+		"core.Seq":  c.Seq,
 	}).Debugf("SetHeadAndSeq")
 
 	return nil
 }
 
-// bootstrap calls the Hashgraph Bootstrap
-func (c *core) bootstrap() error {
+// Bootstrap calls the Hashgraph Bootstrap
+func (c *Core) Bootstrap() error {
 	c.logger.Debug("Bootstrap")
 	return c.hg.Bootstrap()
 }
 
-// setPeers sets the peers property and a New RandomPeerSelector
-func (c *core) setPeers(ps *peers.PeerSet) {
+// SetPeers sets the peers property and a New RandomPeerSelector
+func (c *Core) SetPeers(ps *peers.PeerSet) {
 	c.peers = ps
-	c.peerSelector = newRandomPeerSelector(c.peers, c.validator.ID())
+	c.peerSelector = NewRandomPeerSelector(c.peers, c.validator.ID())
 }
 
 /*******************************************************************************
 Busy
 *******************************************************************************/
 
-// busy indicates whether there is some unfinished work.
-func (c *core) busy() bool {
+// Busy returns a boolean that denotes whether there is incomplete processing
+func (c *Core) Busy() bool {
 	return c.hg.PendingLoadedEvents > 0 ||
 		len(c.transactionPool) > 0 ||
 		len(c.internalTransactionPool) > 0 ||
 		c.selfBlockSignatures.Len() > 0 ||
-		(c.hg.LastConsensusRound != nil && *c.hg.LastConsensusRound < c.targetRound)
+		(c.hg.LastConsensusRound != nil && *c.hg.LastConsensusRound < c.TargetRound)
 }
 
 /*******************************************************************************
 Sync
 *******************************************************************************/
 
-// sync decodes and inserts new Events into the Hashgraph. UnknownEvents are
+// Sync decodes and inserts new Events into the Hashgraph. UnknownEvents are
 // expected to be in topoligical order.
-func (c *core) sync(fromID uint32, unknownEvents []hg.WireEvent) error {
+func (c *Core) Sync(fromID uint32, unknownEvents []hg.WireEvent) error {
 	c.logger.WithField("unknown_events", len(unknownEvents)).Debug("Sync")
 
 	var otherHead *hg.Event
@@ -223,7 +215,7 @@ func (c *core) sync(fromID uint32, unknownEvents []hg.WireEvent) error {
 
 		// NormalSelfParentErrors are not reported. They can happen when two
 		// concurrent pulls are trying to insert the same events.
-		if err := c.insertEventAndRunConsensus(ev, false); err != nil {
+		if err := c.InsertEventAndRunConsensus(ev, false); err != nil {
 			if hg.IsNormalSelfParentError(err) {
 				continue
 			} else {
@@ -244,7 +236,7 @@ func (c *core) sync(fromID uint32, unknownEvents []hg.WireEvent) error {
 		}
 	}
 
-	// Do not overwrite a non-empty head with an empty head
+	//Do not overwrite a non-empty head with an empty head
 	if h, ok := c.heads[fromID]; !ok ||
 		h == nil ||
 		(otherHead != nil && otherHead.Index() > h.Index()) {
@@ -257,21 +249,21 @@ func (c *core) sync(fromID uint32, unknownEvents []hg.WireEvent) error {
 		"transaction_pool":          len(c.transactionPool),
 		"internal_transaction_pool": len(c.internalTransactionPool),
 		"self_signature_pool":       c.selfBlockSignatures.Len(),
-		"target_round":              c.targetRound,
+		"target_round":              c.TargetRound,
 	}).Debug("Sync")
 
 	// Create new event with self head and other head only if there are pending
 	// loaded events or the pools are not empty
-	if c.busy() ||
-		c.seq < 0 {
-		return c.recordHeads()
+	if c.Busy() ||
+		c.Seq < 0 {
+		return c.RecordHeads()
 	}
 
 	return nil
 }
 
-// recordHeads adds heads as SelfEvents
-func (c *core) recordHeads() error {
+// RecordHeads adds heads as SelfEvents
+func (c *Core) RecordHeads() error {
 	c.logger.WithField("heads", len(c.heads)).Debug("RecordHeads()")
 
 	for id, ev := range c.heads {
@@ -279,7 +271,7 @@ func (c *core) recordHeads() error {
 		if ev != nil {
 			op = ev.Hex()
 		}
-		if err := c.addSelfEvent(op); err != nil {
+		if err := c.AddSelfEvent(op); err != nil {
 			return err
 		}
 		delete(c.heads, id)
@@ -288,31 +280,30 @@ func (c *core) recordHeads() error {
 	return nil
 }
 
-// addSelfEvent adds a self event
-func (c *core) addSelfEvent(otherHead string) error {
-	if c.hg.Store.LastRound() < c.acceptedRound {
-		c.logger.Debugf("Too early to insert self-event (%d / %d)", c.hg.Store.LastRound(), c.acceptedRound)
+// AddSelfEvent adds a self event
+func (c *Core) AddSelfEvent(otherHead string) error {
+	if c.hg.Store.LastRound() < c.AcceptedRound {
+		c.logger.Debugf("Too early to insert self-event (%d / %d)", c.hg.Store.LastRound(), c.AcceptedRound)
 		return nil
 	}
 
-	// Add own block signatures to next Event
+	//Add own block signatures to next Event
 	sigs := c.selfBlockSignatures.Slice()
 	txs := len(c.transactionPool)
 	itxs := len(c.internalTransactionPool)
 
-	// create new event with self head and otherHead, and empty pools in its
-	// payload
+	//create new event with self head and otherHead, and empty pools in its
+	//payload
 	newHead := hg.NewEvent(c.transactionPool,
 		c.internalTransactionPool,
 		sigs,
-		[]string{c.head, otherHead},
+		[]string{c.Head, otherHead},
 		c.validator.PublicKeyBytes(),
-		c.seq+1)
+		c.Seq+1)
 
-	// Inserting the Event, and running consensus methods, can have a
-	// side-effect of adding items to the transaction pools (via the commit
-	// callback).
-	if err := c.signAndInsertSelfEvent(newHead); err != nil {
+	//Inserting the Event, and running consensus methods, can have a side-effect
+	//of adding items to the transaction pools (via the commit callback).
+	if err := c.SignAndInsertSelfEvent(newHead); err != nil {
 		c.logger.WithError(err).Errorf("Error inserting new head")
 		return err
 	}
@@ -324,7 +315,7 @@ func (c *core) addSelfEvent(otherHead string) error {
 		"block_signatures":      len(newHead.BlockSignatures()),
 	}).Debug("Created Self-Event")
 
-	// do not remove pool elements that were added by CommitCallback
+	//do not remove pool elements that were added by CommitCallback
 	c.transactionPool = c.transactionPool[txs:]
 	c.internalTransactionPool = c.internalTransactionPool[itxs:]
 	c.selfBlockSignatures.RemoveSlice(sigs)
@@ -332,29 +323,28 @@ func (c *core) addSelfEvent(otherHead string) error {
 	return nil
 }
 
-// signAndInsertSelfEvent signs a Hashgraph Event, inserts it and runs
-// consensus.
-func (c *core) signAndInsertSelfEvent(event *hg.Event) error {
+// SignAndInsertSelfEvent signs a Hashgraph Event, inserts it and runs consensus
+func (c *Core) SignAndInsertSelfEvent(event *hg.Event) error {
 	if err := event.Sign(c.validator.Key); err != nil {
 		return err
 	}
-	return c.insertEventAndRunConsensus(event, true)
+	return c.InsertEventAndRunConsensus(event, true)
 }
 
-// insertEventAndRunConsensus Inserts a hashgraph event and runs consensus
-func (c *core) insertEventAndRunConsensus(event *hg.Event, setWireInfo bool) error {
+// InsertEventAndRunConsensus Inserts a hashgraph event and runs consensus
+func (c *Core) InsertEventAndRunConsensus(event *hg.Event, setWireInfo bool) error {
 	if err := c.hg.InsertEventAndRunConsensus(event, setWireInfo); err != nil {
 		return err
 	}
 	if event.Creator() == c.validator.PublicKeyHex() {
-		c.head = event.Hex()
-		c.seq = event.Index()
+		c.Head = event.Hex()
+		c.Seq = event.Index()
 	}
 	return nil
 }
 
-// knownEvents returns known events from the Hashgraph store
-func (c *core) knownEvents() map[uint32]int {
+// KnownEvents returns known events from the Hashgraph store
+func (c *Core) KnownEvents() map[uint32]int {
 	return c.hg.Store.KnownEvents()
 }
 
@@ -362,19 +352,19 @@ func (c *core) knownEvents() map[uint32]int {
 FastForward
 *******************************************************************************/
 
-// fastForward is used whilst in CatchingUp state to reset the underlying
-// hashgraph from a Block and associated Frame.
-func (c *core) fastForward(block *hg.Block, frame *hg.Frame) error {
+// FastForward is used whilst in catchingUp state to apply past blocks and frames
+func (c *Core) FastForward(block *hg.Block, frame *hg.Frame) error {
+
 	c.logger.Debug("Fast Forward", frame.Round)
 	peerSet := peers.NewPeerSet(frame.Peers)
 
-	// Check Block Signatures
+	//Check Block Signatures
 	err := c.hg.CheckBlock(block, peerSet)
 	if err != nil {
 		return err
 	}
 
-	// Check Frame Hash
+	//Check Frame Hash
 	frameHash, err := frame.Hash()
 	if err != nil {
 		return err
@@ -389,20 +379,20 @@ func (c *core) fastForward(block *hg.Block, frame *hg.Frame) error {
 		return err
 	}
 
-	err = c.setHeadAndSeq()
+	err = c.SetHeadAndSeq()
 	if err != nil {
 		return err
 	}
 
 	// Update peer-selector and validators
-	c.setPeers(peers.NewPeerSet(frame.Peers))
+	c.SetPeers(peers.NewPeerSet(frame.Peers))
 	c.validators = peers.NewPeerSet(frame.Peers)
 
 	return nil
 }
 
-// getAnchorBlockWithFrame returns GetAnchorBlockWithFrame from the hashgraph
-func (c *core) getAnchorBlockWithFrame() (*hg.Block, *hg.Frame, error) {
+//GetAnchorBlockWithFrame returns GetAnchorBlockWithFrame from the hashgraph
+func (c *Core) GetAnchorBlockWithFrame() (*hg.Block, *hg.Frame, error) {
 	return c.hg.GetAnchorBlockWithFrame()
 }
 
@@ -410,10 +400,10 @@ func (c *core) getAnchorBlockWithFrame() (*hg.Block, *hg.Frame, error) {
 Leave
 *******************************************************************************/
 
-// leave causes the node to politely leave the network. If the node is not
+// Leave causes the node to politely leave the network. If the node is not
 // alone, it submits an InternalTransaction to be removed from the
 // validator-set. Otherwise it does nothing.
-func (c *core) leave(leaveTimeout time.Duration) error {
+func (c *Core) Leave(leaveTimeout time.Duration) error {
 	// Do nothing if we are not a validator.
 	p, ok := c.validators.ByID[c.validator.ID()]
 	if !ok {
@@ -427,27 +417,21 @@ func (c *core) leave(leaveTimeout time.Duration) error {
 		return nil
 	}
 
-	// Check for maintenance mode, if set no need for a leave request
-	if c.maintenanceMode {
-		c.logger.Debugf("Leave: maintenance mode, do nothing")
-		return nil
-	}
-
 	// Otherwise, submit an InternalTransaction
 	c.logger.Debugf("Leave: submit InternalTransaction")
 
 	itx := hg.NewInternalTransaction(hg.PEER_REMOVE, *p)
 	itx.Sign(c.validator.Key)
 
-	promise := c.addInternalTransaction(itx)
+	promise := c.AddInternalTransaction(itx)
 
 	// Wait for the InternalTransaction to go through consensus
 	timeout := time.After(leaveTimeout)
 	select {
-	case resp := <-promise.respCh:
+	case resp := <-promise.RespCh:
 		c.logger.WithFields(logrus.Fields{
-			"leaving_round": resp.acceptedRound,
-			"peers":         len(resp.peers),
+			"leaving_round": resp.AcceptedRound,
+			"peers":         len(resp.Peers),
 		}).Debug("leave request processed")
 	case <-timeout:
 		err := fmt.Errorf("Timeout waiting for leave request to go through consensus")
@@ -465,8 +449,8 @@ func (c *core) leave(leaveTimeout time.Duration) error {
 				c.logger.WithError(err).Error()
 				return err
 			default:
-				if c.hg.LastConsensusRound != nil && *c.hg.LastConsensusRound < c.removedRound {
-					c.logger.Debugf("Waiting to reach RemovedRound: %d/%d", *c.hg.LastConsensusRound, c.removedRound)
+				if c.hg.LastConsensusRound != nil && *c.hg.LastConsensusRound < c.RemovedRound {
+					c.logger.Debugf("Waiting to reach RemovedRound: %d/%d", *c.hg.LastConsensusRound, c.RemovedRound)
 					time.Sleep(100 * time.Millisecond)
 				} else {
 					return nil
@@ -482,8 +466,8 @@ func (c *core) leave(leaveTimeout time.Duration) error {
 Commit
 *******************************************************************************/
 
-// commit the Block to the App using the proxyCommitCallback
-func (c *core) commit(block *hg.Block) error {
+// Commit the Block to the App using the proxyCommitCallback
+func (c *Core) Commit(block *hg.Block) error {
 	c.logger.WithFields(logrus.Fields{
 		"block":        block.Index(),
 		"txs":          len(block.Transactions()),
@@ -515,7 +499,7 @@ func (c *core) commit(block *hg.Block) error {
 		}
 
 		if _, ok := blockPeerSet.ByID[c.validator.ID()]; ok {
-			sig, err := c.signBlock(block)
+			sig, err := c.SignBlock(block)
 			if err != nil {
 				return err
 			}
@@ -527,7 +511,7 @@ func (c *core) commit(block *hg.Block) error {
 			return err
 		}
 
-		err = c.processAcceptedInternalTransactions(block.RoundReceived(), commitResponse.InternalTransactionReceipts)
+		err = c.ProcessAcceptedInternalTransactions(block.RoundReceived(), commitResponse.InternalTransactionReceipts)
 		if err != nil {
 			return err
 		}
@@ -536,8 +520,8 @@ func (c *core) commit(block *hg.Block) error {
 	return err
 }
 
-// signBlock signs the block and saves it.
-func (c *core) signBlock(block *hg.Block) (hg.BlockSignature, error) {
+// SignBlock signs the block
+func (c *Core) SignBlock(block *hg.Block) (hg.BlockSignature, error) {
 	sig, err := block.Sign(c.validator.Key)
 	if err != nil {
 		return hg.BlockSignature{}, err
@@ -556,10 +540,10 @@ func (c *core) signBlock(block *hg.Block) (hg.BlockSignature, error) {
 	return sig, nil
 }
 
-// processAcceptedInternalTransactions processes a list of
+// ProcessAcceptedInternalTransactions processes a list of
 // InternalTransactionReceipts from a block, updates the PeerSet for the
 // corresponding round (round-received + 6), and responds to eventual promises.
-func (c *core) processAcceptedInternalTransactions(roundReceived int, receipts []hg.InternalTransactionReceipt) error {
+func (c *Core) ProcessAcceptedInternalTransactions(roundReceived int, receipts []hg.InternalTransactionReceipt) error {
 	currentPeers := c.peers
 	validators := c.validators
 
@@ -589,8 +573,8 @@ func (c *core) processAcceptedInternalTransactions(roundReceived int, receipts [
 
 				// Update RemovedRound if removing self
 				if txBody.Peer.ID() == c.validator.ID() {
-					c.logger.Debugf("Update RemovedRound from %d to %d", c.removedRound, effectiveRound)
-					c.removedRound = effectiveRound
+					c.logger.Debugf("Update RemovedRound from %d to %d", c.RemovedRound, effectiveRound)
+					c.RemovedRound = effectiveRound
 				}
 			default:
 				c.logger.Errorf("Unknown InternalTransactionType %s", txBody.Type)
@@ -606,7 +590,7 @@ func (c *core) processAcceptedInternalTransactions(roundReceived int, receipts [
 	if changed {
 		// Record the new validator-set in the underlying Hashgraph and in the
 		// core's validators field
-		c.lastPeerChangeRound = effectiveRound
+		c.LastPeerChangeRound = effectiveRound
 
 		err := c.hg.Store.SetPeerSet(effectiveRound, validators)
 		if err != nil {
@@ -622,15 +606,15 @@ func (c *core) processAcceptedInternalTransactions(roundReceived int, receipts [
 
 		// Update the current list of communicating peers. This is not
 		// necessarily equal to the latest recorded validator_set.
-		c.setPeers(currentPeers)
+		c.SetPeers(currentPeers)
 
 		// A new validator-set has been recorded and will only be effective from
 		// effectiveRound. A joining node will not be able to participate in the
 		// consensus until the Hashgraph reaches that effectiveRound. Hence, we
 		// force everyone to reach that round.
-		if effectiveRound > c.targetRound {
-			c.logger.Debugf("Update TargetRound from %d to %d", c.targetRound, effectiveRound)
-			c.targetRound = effectiveRound
+		if effectiveRound > c.TargetRound {
+			c.logger.Debugf("Update TargetRound from %d to %d", c.TargetRound, effectiveRound)
+			c.TargetRound = effectiveRound
 		}
 	}
 
@@ -638,9 +622,9 @@ func (c *core) processAcceptedInternalTransactions(roundReceived int, receipts [
 		//respond to the corresponding promise
 		if p, ok := c.promises[r.InternalTransaction.HashString()]; ok {
 			if r.Accepted {
-				p.respond(true, effectiveRound, c.validators.Peers)
+				p.Respond(true, effectiveRound, c.validators.Peers)
 			} else {
-				p.respond(false, 0, []*peers.Peer{})
+				p.Respond(false, 0, []*peers.Peer{})
 			}
 			delete(c.promises, r.InternalTransaction.HashString())
 		}
@@ -653,16 +637,16 @@ func (c *core) processAcceptedInternalTransactions(roundReceived int, receipts [
 Diff
 *******************************************************************************/
 
-// eventDiff returns Events that we are aware of, and that are not known by
+// EventDiff returns Events that we are aware of, and that are not known by
 // another. They are returned in topological order. The parameter otherKnown is
 // a map containing the last Event index per participant, as seen by another
 // peer. We compare this to our view of events and return the diff.
-func (c *core) eventDiff(otherKnown map[uint32]int) (events []*hg.Event, err error) {
+func (c *Core) EventDiff(otherKnown map[uint32]int) (events []*hg.Event, err error) {
 	// unknown is the container for the Events that will be returned by this
 	// method.
 	unknown := []*hg.Event{}
 
-	myknown := c.knownEvents()
+	myknown := c.KnownEvents()
 
 	// We loop through our known map first
 	for id := range myknown {
@@ -702,8 +686,8 @@ func (c *core) eventDiff(otherKnown map[uint32]int) (events []*hg.Event, err err
 	return unknown, nil
 }
 
-// fromWire takes Wire Events and returns Hashgraph Events
-func (c *core) fromWire(wireEvents []hg.WireEvent) ([]hg.Event, error) {
+// FromWire takes Wire Events and returns Hashgraph Events
+func (c *Core) FromWire(wireEvents []hg.WireEvent) ([]hg.Event, error) {
 	events := make([]hg.Event, len(wireEvents), len(wireEvents))
 
 	for i, w := range wireEvents {
@@ -718,8 +702,8 @@ func (c *core) fromWire(wireEvents []hg.WireEvent) ([]hg.Event, error) {
 	return events, nil
 }
 
-// toWire takes Hashgraph Events and returns Wire Events
-func (c *core) toWire(events []*hg.Event) ([]hg.WireEvent, error) {
+// ToWire takes Hashgraph Events and returns Wire Events
+func (c *Core) ToWire(events []*hg.Event) ([]hg.WireEvent, error) {
 	wireEvents := make([]hg.WireEvent, len(events), len(events))
 
 	for i, e := range events {
@@ -733,20 +717,20 @@ func (c *core) toWire(events []*hg.Event) ([]hg.WireEvent, error) {
 Pools
 *******************************************************************************/
 
-// processSigPool calls Hashgraph ProcessSigPool
-func (c *core) processSigPool() error {
+// ProcessSigPool calls Hashgraph ProcessSigPool
+func (c *Core) ProcessSigPool() error {
 	return c.hg.ProcessSigPool()
 }
 
-// addTransactions appends transactions to the transaction pool
-func (c *core) addTransactions(txs [][]byte) {
+// AddTransactions appends transactions to the transaction pool
+func (c *Core) AddTransactions(txs [][]byte) {
 	c.transactionPool = append(c.transactionPool, txs...)
 }
 
-// addInternalTransaction adds an InternalTransaction to the  pool, and creates
+// AddInternalTransaction adds an InternalTransaction to the  pool, and creates
 // a corresponding promise.
-func (c *core) addInternalTransaction(tx hg.InternalTransaction) *joinPromise {
-	promise := newJoinPromise(tx)
+func (c *Core) AddInternalTransaction(tx hg.InternalTransaction) *JoinPromise {
+	promise := NewJoinPromise(tx)
 
 	// Save it to promise store, for later use by the Commit callback
 	c.promises[tx.HashString()] = promise
@@ -762,20 +746,20 @@ func (c *core) addInternalTransaction(tx hg.InternalTransaction) *joinPromise {
 Getters
 *******************************************************************************/
 
-// getHead returns the head from the hashgraph store
-func (c *core) getHead() (*hg.Event, error) {
-	return c.hg.Store.GetEvent(c.head)
+// GetHead returns the head from the hashgraph store
+func (c *Core) GetHead() (*hg.Event, error) {
+	return c.hg.Store.GetEvent(c.Head)
 }
 
-// getEvent returns an event from the hashgrapg store
-func (c *core) getEvent(hash string) (*hg.Event, error) {
+// GetEvent returns an event from the hashgrapg store
+func (c *Core) GetEvent(hash string) (*hg.Event, error) {
 	return c.hg.Store.GetEvent(hash)
 }
 
-// getEventTransactions returns the transactions for an event
-func (c *core) getEventTransactions(hash string) ([][]byte, error) {
+// GetEventTransactions returns the transactions for an event
+func (c *Core) GetEventTransactions(hash string) ([][]byte, error) {
 	var txs [][]byte
-	ex, err := c.getEvent(hash)
+	ex, err := c.GetEvent(hash)
 	if err != nil {
 		return txs, err
 	}
@@ -783,33 +767,33 @@ func (c *core) getEventTransactions(hash string) ([][]byte, error) {
 	return txs, nil
 }
 
-// getConsensusEvents returns consensus events from the hashgragh store
-func (c *core) getConsensusEvents() []string {
+// GetConsensusEvents returns consensus events from the hashgragh store
+func (c *Core) GetConsensusEvents() []string {
 	return c.hg.Store.ConsensusEvents()
 }
 
-// getConsensusEventsCount returns the count of consensus events from the
+// GetConsensusEventsCount returns the count of consensus events from the
 // hashgragh store
-func (c *core) getConsensusEventsCount() int {
+func (c *Core) GetConsensusEventsCount() int {
 	return c.hg.Store.ConsensusEventsCount()
 }
 
-// getUndeterminedEvents returns undetermined events from the hashgraph
-func (c *core) getUndeterminedEvents() []string {
+// GetUndeterminedEvents returns undetermined events from the hashgraph
+func (c *Core) GetUndeterminedEvents() []string {
 	return c.hg.UndeterminedEvents
 }
 
-// getPendingLoadedEvents returns pendign loading events from the hashgraph
-func (c *core) getPendingLoadedEvents() int {
+// GetPendingLoadedEvents returns pendign loading events from the hashgraph
+func (c *Core) GetPendingLoadedEvents() int {
 	return c.hg.PendingLoadedEvents
 }
 
-// getConsensusTransactions returns the transaction from the events returned by
-// getConsensusEvents()
-func (c *core) getConsensusTransactions() ([][]byte, error) {
+// GetConsensusTransactions returns the transaction from the events returned by
+// GetConsensusEvents()
+func (c *Core) GetConsensusTransactions() ([][]byte, error) {
 	txs := [][]byte{}
-	for _, e := range c.getConsensusEvents() {
-		eTxs, err := c.getEventTransactions(e)
+	for _, e := range c.GetConsensusEvents() {
+		eTxs, err := c.GetEventTransactions(e)
 		if err != nil {
 			return txs, fmt.Errorf("Consensus event not found: %s", e)
 		}
@@ -818,23 +802,23 @@ func (c *core) getConsensusTransactions() ([][]byte, error) {
 	return txs, nil
 }
 
-// getLastConsensusRoundIndex returns the Last Consensus Round from the hashgraph
-func (c *core) getLastConsensusRoundIndex() *int {
+// GetLastConsensusRoundIndex returns the Last Consensus Round from the hashgraph
+func (c *Core) GetLastConsensusRoundIndex() *int {
 	return c.hg.LastConsensusRound
 }
 
-// getConsensusTransactionsCount return ConsensusTransacions from the hashgraph
-func (c *core) getConsensusTransactionsCount() int {
+// GetConsensusTransactionsCount return ConsensusTransacions from the hashgraph
+func (c *Core) GetConsensusTransactionsCount() int {
 	return c.hg.ConsensusTransactions
 }
 
-// getLastCommitedRoundEventsCount returns LastCommitedRoundEvents from the
+// GetLastCommitedRoundEventsCount returns LastCommitedRoundEvents from the
 // hashgraph
-func (c *core) getLastCommitedRoundEventsCount() int {
+func (c *Core) GetLastCommitedRoundEventsCount() int {
 	return c.hg.LastCommitedRoundEvents
 }
 
-// getLastBlockIndex returns last block index from the hashgraph store
-func (c *core) getLastBlockIndex() int {
+// GetLastBlockIndex returns last block index from the hashgraph store
+func (c *Core) GetLastBlockIndex() int {
 	return c.hg.Store.LastBlockIndex()
 }

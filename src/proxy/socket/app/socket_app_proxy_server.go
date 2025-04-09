@@ -8,8 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// SocketAppProxyServer is the server component of the AppProxy that responds
-// to RPC requests from App.
+// SocketAppProxyServer ...
 type SocketAppProxyServer struct {
 	netListener *net.Listener
 	rpcServer   *rpc.Server
@@ -17,7 +16,7 @@ type SocketAppProxyServer struct {
 	logger      *logrus.Entry
 }
 
-// NewSocketAppProxyServer creates a new SocketAppProxyServer
+// NewSocketAppProxyServer ...
 func NewSocketAppProxyServer(bindAddress string, logger *logrus.Entry) (*SocketAppProxyServer, error) {
 	server := &SocketAppProxyServer{
 		submitCh: make(chan []byte),
@@ -39,8 +38,10 @@ func (p *SocketAppProxyServer) register(bindAddress string) error {
 	p.rpcServer = rpcServer
 
 	l, err := net.Listen("tcp", bindAddress)
+
 	if err != nil {
 		p.logger.WithField("error", err).Error("Failed to listen")
+
 		return err
 	}
 
@@ -52,6 +53,7 @@ func (p *SocketAppProxyServer) register(bindAddress string) error {
 func (p *SocketAppProxyServer) listen() {
 	for {
 		conn, err := (*p.netListener).Accept()
+
 		if err != nil {
 			p.logger.WithField("error", err).Error("Failed to accept")
 		}
@@ -60,7 +62,7 @@ func (p *SocketAppProxyServer) listen() {
 	}
 }
 
-// SubmitTx Implements the AppProxy interface
+// SubmitTx ...
 func (p *SocketAppProxyServer) SubmitTx(tx []byte, ack *bool) error {
 	p.logger.Debug("SubmitTx")
 

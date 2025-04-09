@@ -7,9 +7,9 @@ import (
 
 	"github.com/BOTCoinNetwork/babble/src/common"
 	"github.com/BOTCoinNetwork/babble/src/config"
-	dummy "github.com/BOTCoinNetwork/babble/src/dummy"
 	hg "github.com/BOTCoinNetwork/babble/src/hashgraph"
 	"github.com/BOTCoinNetwork/babble/src/net"
+	dummy "github.com/BOTCoinNetwork/babble/src/proxy/dummy"
 )
 
 func TestProcessSync(t *testing.T) {
@@ -60,15 +60,15 @@ func TestProcessSync(t *testing.T) {
 
 	//Manually prepare SyncRequest and expected SyncResponse
 
-	node0KnownEvents := node0.core.knownEvents()
-	node1KnownEvents := node1.core.knownEvents()
+	node0KnownEvents := node0.core.KnownEvents()
+	node1KnownEvents := node1.core.KnownEvents()
 
-	unknownEvents, err := node1.core.eventDiff(node0KnownEvents)
+	unknownEvents, err := node1.core.EventDiff(node0KnownEvents)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	unknownWireEvents, err := node1.core.toWire(unknownEvents)
+	unknownWireEvents, err := node1.core.ToWire(unknownEvents)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestProcessSync(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(expectedResp.Known, out.Known) {
-		t.Fatalf("SyncResponse.knownEvents should be %#v, not %#v",
+		t.Fatalf("SyncResponse.KnownEvents should be %#v, not %#v",
 			expectedResp.Known, out.Known)
 	}
 
@@ -166,14 +166,14 @@ func TestProcessEagerSync(t *testing.T) {
 
 	//Manually prepare EagerSyncRequest and expected EagerSyncResponse
 
-	node1KnownEvents := node1.core.knownEvents()
+	node1KnownEvents := node1.core.KnownEvents()
 
-	unknownEvents, err := node0.core.eventDiff(node1KnownEvents)
+	unknownEvents, err := node0.core.EventDiff(node1KnownEvents)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	unknownWireEvents, err := node0.core.toWire(unknownEvents)
+	unknownWireEvents, err := node0.core.ToWire(unknownEvents)
 	if err != nil {
 		t.Fatal(err)
 	}

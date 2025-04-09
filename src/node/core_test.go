@@ -15,10 +15,10 @@ import (
 	"github.com/BOTCoinNetwork/babble/src/proxy"
 )
 
-func initCores(n int, t *testing.T) ([]*core, map[uint32]*ecdsa.PrivateKey, map[string]string) {
+func initCores(n int, t *testing.T) ([]*Core, map[uint32]*ecdsa.PrivateKey, map[string]string) {
 	cacheSize := 1000
 
-	cores := []*core{}
+	cores := []*Core{}
 	index := make(map[string]string)
 	participantKeys := map[uint32]*ecdsa.PrivateKey{}
 	pirs := []*peers.Peer{}
@@ -37,13 +37,12 @@ func initCores(n int, t *testing.T) ([]*core, map[uint32]*ecdsa.PrivateKey, map[
 	for i, peer := range peerSet.Peers {
 		key, _ := participantKeys[peer.ID()]
 
-		core := newCore(
+		core := NewCore(
 			NewValidator(key, peer.Moniker),
 			peerSet,
 			genesisPeerSet,
 			hg.NewInmemStore(cacheSize),
 			proxy.DummyCommitCallback,
-			false,
 			common.NewTestEntry(t, common.TestLogLevel))
 
 		//Create and save the first Event
@@ -54,13 +53,13 @@ func initCores(n int, t *testing.T) ([]*core, map[uint32]*ecdsa.PrivateKey, map[
 			core.validator.PublicKeyBytes(),
 			0)
 
-		err := core.signAndInsertSelfEvent(initialEvent)
+		err := core.SignAndInsertSelfEvent(initialEvent)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		cores = append(cores, core)
-		index[fmt.Sprintf("e%d", i)] = core.head
+		index[fmt.Sprintf("e%d", i)] = core.Head
 	}
 
 	return cores, participantKeys, index
@@ -78,11 +77,11 @@ e01 |   |
 e0  e1  e2
 0   1   2
 */
-func initHashgraph(cores []*core, keys map[uint32]*ecdsa.PrivateKey, index map[string]string, participant uint32) {
+func initHashgraph(cores []*Core, keys map[uint32]*ecdsa.PrivateKey, index map[string]string, participant uint32) {
 	for i := 0; i < len(cores); i++ {
 		if uint32(i) != participant {
-			event, _ := cores[i].getEvent(index[fmt.Sprintf("e%d", i)])
-			if err := cores[participant].insertEventAndRunConsensus(event, true); err != nil {
+			event, _ := cores[i].GetEvent(index[fmt.Sprintf("e%d", i)])
+			if err := cores[participant].InsertEventAndRunConsensus(event, true); err != nil {
 				fmt.Printf("error inserting %s: %s\n", getName(index, event.Hex()), err)
 			}
 		}
@@ -116,18 +115,18 @@ func initHashgraph(cores []*core, keys map[uint32]*ecdsa.PrivateKey, index map[s
 	}
 }
 
-func insertEvent(cores []*core, keys map[uint32]*ecdsa.PrivateKey, index map[string]string,
+func insertEvent(cores []*Core, keys map[uint32]*ecdsa.PrivateKey, index map[string]string,
 	event *hg.Event, name string, particant uint32, creator uint32) error {
 
 	if particant == creator {
-		if err := cores[particant].signAndInsertSelfEvent(event); err != nil {
+		if err := cores[particant].SignAndInsertSelfEvent(event); err != nil {
 			return err
 		}
 		//event is not signed because passed by value
-		index[name] = cores[particant].head
+		index[name] = cores[particant].Head
 	} else {
 		event.Sign(keys[creator])
-		if err := cores[particant].insertEventAndRunConsensus(event, true); err != nil {
+		if err := cores[particant].InsertEventAndRunConsensus(event, true); err != nil {
 			return err
 		}
 		index[name] = event.Hex()
@@ -155,8 +154,8 @@ func TestEventDiff(t *testing.T) {
 	   0   1   2        0   1   2
 	*/
 
-	knownBy1 := cores[1].knownEvents()
-	unknownBy1, err := cores[0].eventDiff(knownBy1)
+	knownBy1 := cores[1].KnownEvents()
+	unknownBy1, err := cores[0].EventDiff(knownBy1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +196,7 @@ func TestSync(t *testing.T) {
 	   0   1   2        0   1   2       0   1   2
 	*/
 
-	knownBy0 := cores[0].knownEvents()
+	knownBy0 := cores[0].KnownEvents()
 	if k := knownBy0[cores[0].validator.ID()]; k != 1 {
 		t.Fatalf("core 0 should have last-index 1 for core 0, not %d", k)
 	}
@@ -207,7 +206,7 @@ func TestSync(t *testing.T) {
 	if k := knownBy0[cores[2].validator.ID()]; k != -1 {
 		t.Fatalf("core 0 should have last-index -1 for core 2, not %d", k)
 	}
-	core0Head, _ := cores[0].getHead()
+	core0Head, _ := cores[0].GetHead()
 	if core0Head.SelfParent() != index["e0"] {
 		t.Fatalf("core 0 head self-parent should be e0")
 	}
@@ -235,7 +234,7 @@ func TestSync(t *testing.T) {
 	   0   1   2        0   1   2       0   1   2
 	*/
 
-	knownBy2 := cores[2].knownEvents()
+	knownBy2 := cores[2].KnownEvents()
 	if k := knownBy2[cores[0].validator.ID()]; k != 1 {
 		t.Fatalf("core 2 should have last-index 1 for core 0, not %d", k)
 	}
@@ -245,7 +244,7 @@ func TestSync(t *testing.T) {
 	if k := knownBy2[cores[2].validator.ID()]; k != 1 {
 		t.Fatalf("core 2 should have last-index 1 for core 2, not %d", k)
 	}
-	core2Head, _ := cores[2].getHead()
+	core2Head, _ := cores[2].GetHead()
 	if core2Head.SelfParent() != index["e2"] {
 		t.Fatalf("core 2 head self-parent should be e2")
 	}
@@ -275,7 +274,7 @@ func TestSync(t *testing.T) {
 	   0   1   2        0   1   2       0   1   2
 	*/
 
-	knownBy1 := cores[1].knownEvents()
+	knownBy1 := cores[1].KnownEvents()
 	if k := knownBy1[cores[0].validator.ID()]; k != 1 {
 		t.Fatalf("core 1 should have last-index 1 for core 0, not %d", k)
 	}
@@ -285,7 +284,7 @@ func TestSync(t *testing.T) {
 	if k := knownBy1[cores[2].validator.ID()]; k != 1 {
 		t.Fatalf("core 1 should have last-index 1 for core 2, not %d", k)
 	}
-	core1Head, _ := cores[1].getHead()
+	core1Head, _ := cores[1].GetHead()
 	if core1Head.SelfParent() != index["e1"] {
 		t.Fatalf("core 1 head self-parent should be e1")
 	}
@@ -343,7 +342,7 @@ type play struct {
 	internalTxs []hg.InternalTransaction
 }
 
-func initConsensusHashgraph(t *testing.T) []*core {
+func initConsensusHashgraph(t *testing.T) []*Core {
 	cores, _, _ := initCores(3, t)
 	playbook := []play{
 		{from: 0, to: 1, payload: [][]byte{[]byte("e10")}},
@@ -379,13 +378,13 @@ func initConsensusHashgraph(t *testing.T) []*core {
 func TestConsensus(t *testing.T) {
 	cores := initConsensusHashgraph(t)
 
-	if l := len(cores[0].getConsensusEvents()); l != 6 {
+	if l := len(cores[0].GetConsensusEvents()); l != 6 {
 		t.Fatalf("length of consensus should be 6 not %d", l)
 	}
 
-	core0Consensus := cores[0].getConsensusEvents()
-	core1Consensus := cores[1].getConsensusEvents()
-	core2Consensus := cores[2].getConsensusEvents()
+	core0Consensus := cores[0].GetConsensusEvents()
+	core1Consensus := cores[1].GetConsensusEvents()
+	core2Consensus := cores[2].GetConsensusEvents()
 
 	for i, e := range core0Consensus {
 		if core1Consensus[i] != e {
@@ -434,7 +433,7 @@ func TestConsensus(t *testing.T) {
     |   e1  e2  e3
     0	1	2	3
 */
-func initFFHashgraph(cores []*core, t *testing.T) {
+func initFFHashgraph(cores []*Core, t *testing.T) {
 	playbook := []play{
 		{from: 1, to: 2, payload: [][]byte{[]byte("e21")}},
 		{from: 2, to: 3, payload: [][]byte{[]byte("e32")}},
@@ -463,7 +462,7 @@ func TestConsensusFF(t *testing.T) {
 	cores, _, _ := initCores(4, t)
 	initFFHashgraph(cores, t)
 
-	if r := cores[1].getLastConsensusRoundIndex(); r == nil || *r != 1 {
+	if r := cores[1].GetLastConsensusRoundIndex(); r == nil || *r != 1 {
 		disp := "nil"
 		if r != nil {
 			disp = strconv.Itoa(*r)
@@ -471,13 +470,13 @@ func TestConsensusFF(t *testing.T) {
 		t.Fatalf("Cores[1] last consensus Round should be 1, not %s", disp)
 	}
 
-	if l := len(cores[1].getConsensusEvents()); l != 6 {
+	if l := len(cores[1].GetConsensusEvents()); l != 6 {
 		t.Fatalf("Node 1 should have 6 consensus events, not %d", l)
 	}
 
-	core1Consensus := cores[1].getConsensusEvents()
-	core2Consensus := cores[2].getConsensusEvents()
-	core3Consensus := cores[3].getConsensusEvents()
+	core1Consensus := cores[1].GetConsensusEvents()
+	core2Consensus := cores[2].GetConsensusEvents()
+	core3Consensus := cores[3].GetConsensusEvents()
 
 	for i, e := range core1Consensus {
 		if core2Consensus[i] != e {
@@ -495,7 +494,7 @@ func TestCoreFastForward(t *testing.T) {
 
 	t.Run("Test no Anchor", func(t *testing.T) {
 		//Test no anchor block
-		_, _, err := cores[1].getAnchorBlockWithFrame()
+		_, _, err := cores[1].GetAnchorBlockWithFrame()
 		if err == nil {
 			t.Fatal("GetAnchorBlockWithFrame should throw an error because there is no anchor block yet")
 		}
@@ -513,7 +512,7 @@ func TestCoreFastForward(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		sig, err := c.signBlock(b)
+		sig, err := c.SignBlock(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -535,12 +534,12 @@ func TestCoreFastForward(t *testing.T) {
 		*cores[1].hg.AnchorBlock = 0
 
 		//Now the function should find an AnchorBlock
-		block, frame, err := cores[1].getAnchorBlockWithFrame()
+		block, frame, err := cores[1].GetAnchorBlockWithFrame()
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		err = cores[0].fastForward(block, frame)
+		err = cores[0].FastForward(block, frame)
 		//We should get an error because AnchorBlock doesnt contain enough
 		//signatures
 		if err == nil {
@@ -561,7 +560,7 @@ func TestCoreFastForward(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		block, frame, err := cores[1].getAnchorBlockWithFrame()
+		block, frame, err := cores[1].GetAnchorBlockWithFrame()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -572,12 +571,12 @@ func TestCoreFastForward(t *testing.T) {
 		unmarshalledFrame := new(hg.Frame)
 		unmarshalledFrame.Unmarshal(marshalledFrame)
 
-		err = cores[0].fastForward(block, unmarshalledFrame)
+		err = cores[0].FastForward(block, unmarshalledFrame)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		knownBy0 := cores[0].knownEvents()
+		knownBy0 := cores[0].KnownEvents()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -593,7 +592,7 @@ func TestCoreFastForward(t *testing.T) {
 			t.Fatalf("Cores[0].Known should be %v, not %v", expectedKnown, knownBy0)
 		}
 
-		if r := cores[0].getLastConsensusRoundIndex(); r == nil || *r != 1 {
+		if r := cores[0].GetLastConsensusRoundIndex(); r == nil || *r != 1 {
 			t.Fatalf("Cores[0] last consensus Round should be 1, not %v", r)
 		}
 
@@ -694,7 +693,7 @@ P:[0,1,2]   |  \ |    |
             R0   R1   R2
             0    1    2
 */
-func initR2DynHashgraph(t *testing.T) (cores []*core, bobPeer *peers.Peer, bobKey *ecdsa.PrivateKey) {
+func initR2DynHashgraph(t *testing.T) (cores []*Core, bobPeer *peers.Peer, bobKey *ecdsa.PrivateKey) {
 	//Initialize first 3 cores. They will have the same PeerSet of 3.
 	cores, _, _ = initCores(3, t)
 
@@ -795,16 +794,15 @@ func TestCoreFastForwardAfterJoin(t *testing.T) {
 
 	genesisPeerSet := clonePeerSet(t, initPeerSet.Peers)
 
-	bobCore := newCore(
+	bobCore := NewCore(
 		NewValidator(bobKey, bobPeer.Moniker),
 		initPeerSet,
 		genesisPeerSet,
 		hg.NewInmemStore(1000),
 		proxy.DummyCommitCallback,
-		false,
 		common.NewTestEntry(t, common.TestLogLevel))
 
-	bobCore.setHeadAndSeq()
+	bobCore.SetHeadAndSeq()
 
 	cores = append(cores, bobCore)
 
@@ -881,7 +879,7 @@ func TestCoreFastForwardAfterJoin(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		err = cores[3].fastForward(&unmarshalledBlock, &unmarshalledFrame)
+		err = cores[3].FastForward(&unmarshalledBlock, &unmarshalledFrame)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -896,7 +894,7 @@ func TestCoreFastForwardAfterJoin(t *testing.T) {
 			Check Known
 		***********************************************************************/
 
-		knownBy3 := cores[3].knownEvents()
+		knownBy3 := cores[3].KnownEvents()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -976,7 +974,7 @@ func TestCoreFastForwardAfterJoin(t *testing.T) {
 			Check Consensus Rounds and Blocks
 		***********************************************************************/
 
-		if r := cores[3].getLastConsensusRoundIndex(); r == nil || *r != 6 {
+		if r := cores[3].GetLastConsensusRoundIndex(); r == nil || *r != 6 {
 			t.Fatalf("Cores[3] last consensus Round should be 4, not %v", *r)
 		}
 
@@ -989,32 +987,32 @@ func TestCoreFastForwardAfterJoin(t *testing.T) {
 
 /******************************************************************************/
 
-func synchronizeCores(cores []*core, from int, to int, payload [][]byte, internalTxs []hg.InternalTransaction) error {
-	knownByTo := cores[to].knownEvents()
-	unknownByTo, err := cores[from].eventDiff(knownByTo)
+func synchronizeCores(cores []*Core, from int, to int, payload [][]byte, internalTxs []hg.InternalTransaction) error {
+	knownByTo := cores[to].KnownEvents()
+	unknownByTo, err := cores[from].EventDiff(knownByTo)
 	if err != nil {
 		return err
 	}
 
-	unknownWire, err := cores[from].toWire(unknownByTo)
+	unknownWire, err := cores[from].ToWire(unknownByTo)
 	if err != nil {
 		return err
 	}
 
-	cores[to].addTransactions(payload)
+	cores[to].AddTransactions(payload)
 
 	for _, it := range internalTxs {
-		cores[to].addInternalTransaction(it)
+		cores[to].AddInternalTransaction(it)
 	}
 
-	return cores[to].sync(cores[from].validator.ID(), unknownWire)
+	return cores[to].Sync(cores[from].validator.ID(), unknownWire)
 }
 
-func syncAndRunConsensus(cores []*core, from int, to int, payload [][]byte, internalTxs []hg.InternalTransaction) error {
+func syncAndRunConsensus(cores []*Core, from int, to int, payload [][]byte, internalTxs []hg.InternalTransaction) error {
 	if err := synchronizeCores(cores, from, to, payload, internalTxs); err != nil {
 		return err
 	}
-	cores[to].processSigPool()
+	cores[to].ProcessSigPool()
 	return nil
 }
 

@@ -4,8 +4,6 @@ import (
 	"os"
 	"testing"
 	"time"
-
-	_state "github.com/BOTCoinNetwork/babble/src/node/state"
 )
 
 func TestAutoSuspend(t *testing.T) {
@@ -18,8 +16,8 @@ func TestAutoSuspend(t *testing.T) {
 
 	// initialize only 2 nodes
 	nodes := []*Node{
-		newNode(peers.Peers[0], keys[0], genesisPeerSet, peers, 1000, 1000, 10, false, "badger", 10*time.Millisecond, false, "", t),
-		newNode(peers.Peers[1], keys[1], genesisPeerSet, peers, 1000, 1000, 10, false, "badger", 10*time.Millisecond, false, "", t),
+		newNode(peers.Peers[0], keys[0], genesisPeerSet, peers, 1000, 1000, 10, false, "badger", 10*time.Millisecond, t),
+		newNode(peers.Peers[1], keys[1], genesisPeerSet, peers, 1000, 1000, 10, false, "badger", 10*time.Millisecond, t),
 	}
 	defer shutdownNodes(nodes)
 
@@ -40,18 +38,18 @@ func TestAutoSuspend(t *testing.T) {
 	submitTransaction(nodes[0], []byte("the tx that will never be committed"))
 	waitSuspend(nodes, 10*time.Second, t)
 
-	if s := nodes[0].GetState(); s != _state.Suspended {
+	if s := nodes[0].getState(); s != Suspended {
 		t.Fatalf("nodes[0] should be Suspended, not %v. UndeterminedEvents: %d",
-			s, len(nodes[0].core.getUndeterminedEvents()))
+			s, len(nodes[0].core.GetUndeterminedEvents()))
 	}
-	if s := nodes[1].GetState(); s != _state.Suspended {
+	if s := nodes[1].getState(); s != Suspended {
 		t.Fatalf("nodes[1] should be Suspended, not %v. UndeterminedEvents: %d",
-			s, len(nodes[1].core.getUndeterminedEvents()))
+			s, len(nodes[1].core.GetUndeterminedEvents()))
 	}
 
-	node0FirstUE := len(nodes[0].core.getUndeterminedEvents())
+	node0FirstUE := len(nodes[0].core.GetUndeterminedEvents())
 	t.Logf("nodes[0].UndeterminedEvents = %d", node0FirstUE)
-	node1FirstUE := len(nodes[1].core.getUndeterminedEvents())
+	node1FirstUE := len(nodes[1].core.GetUndeterminedEvents())
 	t.Logf("nodes[1].UndeterminedEvents = %d", node1FirstUE)
 
 	// Now restart the nodes and hope that they gossip some more, until they
@@ -66,18 +64,18 @@ func TestAutoSuspend(t *testing.T) {
 	submitTransaction(nodes[0], []byte("the tx that will never be committed"))
 	waitSuspend(nodes, 10*time.Second, t)
 
-	if s := nodes[0].GetState(); s != _state.Suspended {
+	if s := nodes[0].getState(); s != Suspended {
 		t.Fatalf("nodes[0] should be Suspended, not %v. UndeterminedEvents: %d",
-			s, len(nodes[0].core.getUndeterminedEvents()))
+			s, len(nodes[0].core.GetUndeterminedEvents()))
 	}
-	if s := nodes[1].GetState(); s != _state.Suspended {
+	if s := nodes[1].getState(); s != Suspended {
 		t.Fatalf("nodes[1] should be Suspended, not %v. UndeterminedEvents: %d",
-			s, len(nodes[1].core.getUndeterminedEvents()))
+			s, len(nodes[1].core.GetUndeterminedEvents()))
 	}
 
-	node0SecondUE := len(nodes[0].core.getUndeterminedEvents())
+	node0SecondUE := len(nodes[0].core.GetUndeterminedEvents())
 	t.Logf("nodes[0].UndeterminedEvents = %d", node0SecondUE)
-	node1SecondUE := len(nodes[1].core.getUndeterminedEvents())
+	node1SecondUE := len(nodes[1].core.GetUndeterminedEvents())
 	t.Logf("nodes[1].UndeterminedEvents = %d", node1SecondUE)
 
 	if node0SecondUE-node0FirstUE < nodes[0].conf.SuspendLimit {
@@ -100,7 +98,7 @@ func waitSuspend(nodes []*Node, timeout time.Duration, t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 		done := true
 		for _, n := range nodes {
-			if n.GetState() != _state.Suspended {
+			if n.getState() != Suspended {
 				done = false
 				break
 			}

@@ -7,7 +7,6 @@ import (
 	"github.com/BOTCoinNetwork/babble/src/hashgraph"
 	hg "github.com/BOTCoinNetwork/babble/src/hashgraph"
 	"github.com/BOTCoinNetwork/babble/src/net"
-	_state "github.com/BOTCoinNetwork/babble/src/node/state"
 	"github.com/BOTCoinNetwork/babble/src/peers"
 	"github.com/sirupsen/logrus"
 )
@@ -80,10 +79,10 @@ func (n *Node) processRPC(rpc net.RPC) {
 	// because it enables the other nodes to be notified of this suspension.
 	_, isSyncRequest := rpc.Command.(*net.SyncRequest)
 
-	if state := n.GetState(); !(state == _state.Babbling ||
-		(state == _state.Suspended && isSyncRequest)) {
+	if !(n.getState() == Babbling ||
+		(n.getState() == Suspended && isSyncRequest)) {
 
-		n.logger.WithField("state", state).Debug("Not in Babbling state")
+		n.logger.WithField("state", n.state.state).Debug("Not in Babbling state")
 		rpc.Respond(nil, fmt.Errorf("Not in Babbling state"))
 		return
 	}
@@ -119,7 +118,7 @@ func (n *Node) processSyncRequest(rpc net.RPC, cmd *net.SyncRequest) {
 	//Compute Diff
 	start := time.Now()
 	n.coreLock.Lock()
-	eventDiff, err := n.core.eventDiff(cmd.Known)
+	eventDiff, err := n.core.EventDiff(cmd.Known)
 	n.coreLock.Unlock()
 	elapsed := time.Since(start)
 
@@ -146,7 +145,7 @@ func (n *Node) processSyncRequest(rpc net.RPC, cmd *net.SyncRequest) {
 		}
 
 		//Convert to WireEvents
-		wireEvents, err := n.core.toWire(eventDiff)
+		wireEvents, err := n.core.ToWire(eventDiff)
 		if err != nil {
 			n.logger.WithField("error", err).Debug("Converting to WireEvent")
 			respErr = err
@@ -157,7 +156,7 @@ func (n *Node) processSyncRequest(rpc net.RPC, cmd *net.SyncRequest) {
 
 	//Get Self Known
 	n.coreLock.Lock()
-	knownEvents := n.core.knownEvents()
+	knownEvents := n.core.KnownEvents()
 	n.coreLock.Unlock()
 
 	resp.Known = knownEvents
@@ -214,9 +213,9 @@ func (n *Node) processFastForwardRequest(rpc net.RPC, cmd *net.FastForwardReques
 
 	var respErr error
 
-	// Get latest Frame
+	//Get latest Frame
 	n.coreLock.Lock()
-	block, frame, err := n.core.getAnchorBlockWithFrame()
+	block, frame, err := n.core.GetAnchorBlockWithFrame()
 	n.coreLock.Unlock()
 
 	if err != nil {
@@ -270,7 +269,7 @@ func (n *Node) processJoinRequest(rpc net.RPC, cmd *net.JoinRequest) {
 		accepted = true
 
 		//Get current peerset and accepted round
-		lastConsensusRound := n.core.getLastConsensusRoundIndex()
+		lastConsensusRound := n.core.GetLastConsensusRoundIndex()
 		if lastConsensusRound != nil {
 			acceptedRound = *lastConsensusRound
 		}
@@ -280,16 +279,16 @@ func (n *Node) processJoinRequest(rpc net.RPC, cmd *net.JoinRequest) {
 	} else {
 		// Dispatch the InternalTransaction
 		n.coreLock.Lock()
-		promise := n.core.addInternalTransaction(cmd.InternalTransaction)
+		promise := n.core.AddInternalTransaction(cmd.InternalTransaction)
 		n.coreLock.Unlock()
 
 		//Wait for the InternalTransaction to go through consensus
 		timeout := time.After(n.conf.JoinTimeout)
 		select {
-		case resp := <-promise.respCh:
-			accepted = resp.accepted
-			acceptedRound = resp.acceptedRound
-			peers = resp.peers
+		case resp := <-promise.RespCh:
+			accepted = resp.Accepted
+			acceptedRound = resp.AcceptedRound
+			peers = resp.Peers
 		case <-timeout:
 			respErr = fmt.Errorf("Timeout waiting for JoinRequest to go through consensus")
 			n.logger.WithError(respErr).Error()

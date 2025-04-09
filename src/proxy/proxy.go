@@ -2,15 +2,12 @@ package proxy
 
 import (
 	"github.com/BOTCoinNetwork/babble/src/hashgraph"
-	"github.com/BOTCoinNetwork/babble/src/node/state"
 )
 
-// AppProxy defines the interface which is used by Babble to communicate with
-// the App
+// AppProxy ...
 type AppProxy interface {
 	SubmitCh() chan []byte
 	CommitBlock(block hashgraph.Block) (CommitResponse, error)
 	GetSnapshot(blockIndex int) ([]byte, error)
 	Restore(snapshot []byte) error
-	OnStateChanged(state.State) error
 }

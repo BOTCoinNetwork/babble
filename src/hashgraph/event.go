@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/BOTCoinNetwork/babble/src/common"
 	"github.com/BOTCoinNetwork/babble/src/crypto"
@@ -19,15 +18,14 @@ EventBody
 // EventBody contains the payload of an Event as well as the information that
 // ties it to other Events. The private fields are for local computations only.
 type EventBody struct {
-	Transactions         [][]byte              // application transactions
-	InternalTransactions []InternalTransaction // internal transactions ( add / remove peers )
-	Parents              []string              // hashes of the event's parents, self-parent first
-	Creator              []byte                // creator's public key
-	Index                int                   // index in the sequence of events created by Creator
-	BlockSignatures      []BlockSignature      // list of Block signatures signed by the Event Creator ONLY
-	Timestamp            int64                 // Unix timestamp when Event was created (seconds since January 1st, 1970)
+	Transactions         [][]byte              //the payload
+	InternalTransactions []InternalTransaction //peers add and removal internal consensus
+	Parents              []string              //hashes of the event's parents, self-parent first
+	Creator              []byte                //creator's public key
+	Index                int                   //index in the sequence of events created by Creator
+	BlockSignatures      []BlockSignature      //list of Block signatures signed by the Event's Creator ONLY
 
-	// These fields are not serialized
+	//These fields are not serialized
 	creatorID            uint32
 	otherParentCreatorID uint32
 	selfParentIndex      int
@@ -134,7 +132,6 @@ func NewEvent(transactions [][]byte,
 		Parents:              parents,
 		Creator:              creator,
 		Index:                index,
-		Timestamp:            time.Now().Unix(),
 	}
 	return &Event{
 		Body: body,
@@ -172,11 +169,6 @@ func (e *Event) InternalTransactions() []InternalTransaction {
 // Index returns the Event's index
 func (e *Event) Index() int {
 	return e.Body.Index
-}
-
-// Timestamp returns the Event's Timestamp
-func (e *Event) Timestamp() int64 {
-	return e.Body.Timestamp
 }
 
 // BlockSignatures returns the Event's BlockSignatures
@@ -397,7 +389,6 @@ func (e *Event) ToWire() WireEvent {
 			OtherParentIndex:     e.Body.otherParentIndex,
 			CreatorID:            e.Body.creatorID,
 			Index:                e.Body.Index,
-			Timestamp:            e.Body.Timestamp,
 			BlockSignatures:      e.WireBlockSignatures(),
 		},
 		Signature: e.Signature,
@@ -408,28 +399,26 @@ func (e *Event) ToWire() WireEvent {
 WireEvent
 *******************************************************************************/
 
-// WireBody is a light-weight representation of an EventBody where hashes are
-// replaced by ints.
+// WireBody ...
 type WireBody struct {
 	Transactions         [][]byte
 	InternalTransactions []InternalTransaction
 	BlockSignatures      []WireBlockSignature
+
 	CreatorID            uint32
 	OtherParentCreatorID uint32
 	Index                int
 	SelfParentIndex      int
 	OtherParentIndex     int
-	Timestamp            int64
 }
 
-// WireEvent is a light-weight representation of an Event that is used to send
-// Events over the wire because they take less space.
+// WireEvent ...
 type WireEvent struct {
 	Body      WireBody
 	Signature string
 }
 
-// BlockSignatures unpacks BlockSignatures from a WireEvent.
+// BlockSignatures ...
 func (we *WireEvent) BlockSignatures(validator []byte) []BlockSignature {
 	if we.Body.BlockSignatures != nil {
 		blockSignatures := make([]BlockSignature, len(we.Body.BlockSignatures))
@@ -452,8 +441,8 @@ func (we *WireEvent) BlockSignatures(validator []byte) []BlockSignature {
 FrameEvent
 *******************************************************************************/
 
-// FrameEvent is a wrapper around a regular Event. It contains exported fields
-// Round, Witness, and LamportTimestamp.
+//FrameEvent is a wrapper around a regular Event. It contains exported fields
+//Round, Witness, and LamportTimestamp.
 type FrameEvent struct {
 	Core             *Event //EventBody + Signature
 	Round            int
@@ -475,7 +464,7 @@ hashes. This is consensus total ordering.
 *******************************************************************************/
 
 // ByTopologicalOrder implements sort.Interface for []Event based on the private
-// topologicalIndex field.
+// topologicalIndex field. THIS IS A PARTIAL ORDER.
 type ByTopologicalOrder []*Event
 
 // Len implements the sort.Interface
@@ -489,8 +478,9 @@ func (a ByTopologicalOrder) Less(i, j int) bool {
 	return a[i].topologicalIndex < a[j].topologicalIndex
 }
 
-// SortedFrameEvents implements sort.Interface for []FrameEvent based on
-// the lamportTimestamp field.
+//SortedFrameEvents implements sort.Interface for []FrameEvent based on
+//the lamportTimestamp field.
+//THIS IS A TOTAL ORDER
 type SortedFrameEvents []*FrameEvent
 
 // Len implements the sort.Interface

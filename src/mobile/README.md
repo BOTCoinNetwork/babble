@@ -11,7 +11,7 @@ $ gomobile init -ndk ~/PATH/TO/ANDROID/NDK
 ### Building android library
 To compile Go package as android library execute
 ```bash
-$ gomobile bind -v -target=android github.com/BOTCoinNetwork/babble/src/mobile
+$ gomobile bind -v -target=android -tags=mobile github.com/BOTCoinNetwork/babble/src/mobile
 ```
 
 ## Import the Babble Module

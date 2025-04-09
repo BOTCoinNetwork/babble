@@ -51,8 +51,6 @@ func TestNetworkTransport_PooledConn(t *testing.T) {
 	}
 
 	// Listen for a request
-	stopCh := make(chan struct{})
-	defer close(stopCh)
 	go func() {
 		for {
 			select {
@@ -63,8 +61,7 @@ func TestNetworkTransport_PooledConn(t *testing.T) {
 					t.Fatalf("command mismatch: %#v %#v", *req, args)
 				}
 				rpc.Respond(&resp, nil)
-			case <-stopCh:
-				return
+
 			case <-time.After(200 * time.Millisecond):
 				t.Log("Fatal Error TIMEOUT in TestNetworkTransport_PooledConn")
 				t.Fatal("TIMEOUT")

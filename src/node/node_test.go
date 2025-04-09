@@ -15,11 +15,10 @@ import (
 	"github.com/BOTCoinNetwork/babble/src/common"
 	"github.com/BOTCoinNetwork/babble/src/config"
 	bkeys "github.com/BOTCoinNetwork/babble/src/crypto/keys"
-	dummy "github.com/BOTCoinNetwork/babble/src/dummy"
 	hg "github.com/BOTCoinNetwork/babble/src/hashgraph"
 	"github.com/BOTCoinNetwork/babble/src/net"
-	"github.com/BOTCoinNetwork/babble/src/net/signal/wamp"
 	"github.com/BOTCoinNetwork/babble/src/peers"
+	dummy "github.com/BOTCoinNetwork/babble/src/proxy/dummy"
 )
 
 /*
@@ -30,11 +29,6 @@ NO FAST-SYNC, NO DYNAMIC PARTICIPANTS.
 
 */
 var ip = 9990
-
-//config for test WebRTC signaling service
-var certFile = "../net/signal/wamp/test_data/cert.pem"
-var keyFile = "../net/signal/wamp/test_data/key.pem"
-var realm = config.DefaultSignalRealm
 
 func TestAddTransaction(t *testing.T) {
 	keys, peers := initPeers(t, 2)
@@ -51,8 +45,6 @@ func TestAddTransaction(t *testing.T) {
 		false,
 		"inmem",
 		10*time.Millisecond,
-		false,
-		"",
 		t)
 	defer shutdownNodes(nodes)
 
@@ -65,7 +57,7 @@ func TestAddTransaction(t *testing.T) {
 	node0AppProxy.SubmitTx([]byte(message))
 
 	//simulate a SyncRequest from node0 to node1
-	node0KnownEvents := nodes[0].core.knownEvents()
+	node0KnownEvents := nodes[0].core.KnownEvents()
 
 	resp, err := nodes[0].requestSync(
 		peers.Peers[1].NetAddr,
@@ -87,7 +79,7 @@ func TestAddTransaction(t *testing.T) {
 		t.Fatalf("Fatal node0's transactionPool should have 0 elements, not %d\n", l)
 	}
 
-	node0Head, _ := nodes[0].core.getHead()
+	node0Head, _ := nodes[0].core.GetHead()
 	if l := len(node0Head.Transactions()); l != 1 {
 		t.Fatalf("Fatal node0's Head should have 1 element, not %d\n", l)
 	}
@@ -102,59 +94,11 @@ func TestGossip(t *testing.T) {
 
 	genesisPeerSet := clonePeerSet(t, peers.Peers)
 
-	nodes := initNodes(keys, peers, genesisPeerSet, 100000, 1000, 5, false, "inmem", 5*time.Millisecond, false, "", t)
+	nodes := initNodes(keys, peers, genesisPeerSet, 100000, 1000, 5, false, "inmem", 5*time.Millisecond, t)
 	//defer drawGraphs(nodes, t)
 
 	target := 50
-	err := gossip(nodes, target, true)
-	if err != nil {
-		t.Error("Fatal Error", err)
-		t.Fatal(err)
-	}
-
-	checkGossip(nodes, 0, t)
-
-	checkTimestamps(nodes[0], t)
-}
-
-func TestWebRTCGossip(t *testing.T) {
-	keys, peers := initPeers(t, 4)
-
-	genesisPeerSet := clonePeerSet(t, peers.Peers)
-
-	server, err := wamp.NewServer(
-		"localhost:2443",
-		realm,
-		certFile,
-		keyFile,
-		common.NewTestEntry(t, common.TestLogLevel),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	go server.Run()
-	defer server.Shutdown()
-	time.Sleep(time.Second)
-
-	nodes := initNodes(
-		keys,
-		peers,
-		genesisPeerSet,
-		100000,
-		1000,
-		10,
-		false,
-		"inmem",
-		50*time.Millisecond, // slow down for webrtc
-		true,
-		"localhost:2443",
-		t,
-	)
-	//defer drawGraphs(nodes, t)
-
-	target := 50
-	err = gossip(nodes, target, true)
+	err := gossip(nodes, target, true, 3*time.Second)
 	if err != nil {
 		t.Error("Fatal Error", err)
 		t.Fatal(err)
@@ -168,10 +112,10 @@ func TestMissingNodeGossip(t *testing.T) {
 
 	genesisPeerSet := clonePeerSet(t, peers.Peers)
 
-	nodes := initNodes(keys, peers, genesisPeerSet, 1000, 1000, 5, false, "inmem", 5*time.Millisecond, false, "", t)
+	nodes := initNodes(keys, peers, genesisPeerSet, 1000, 1000, 5, false, "inmem", 5*time.Millisecond, t)
 	//defer drawGraphs(nodes, t)
 
-	err := gossip(nodes[1:], 10, true)
+	err := gossip(nodes[1:], 10, true, 6*time.Second)
 	if err != nil {
 		t.Error("Fatal Error", err)
 		t.Fatal(err)
@@ -185,17 +129,17 @@ func TestSyncLimit(t *testing.T) {
 
 	genesisPeerSet := clonePeerSet(t, peers.Peers)
 
-	nodes := initNodes(keys, peers, genesisPeerSet, 1000, 1000, 5, false, "inmem", 5*time.Millisecond, false, "", t)
+	nodes := initNodes(keys, peers, genesisPeerSet, 1000, 1000, 5, false, "inmem", 5*time.Millisecond, t)
 	defer shutdownNodes(nodes)
 
-	err := gossip(nodes, 10, false)
+	err := gossip(nodes, 10, false, 3*time.Second)
 	if err != nil {
 		t.Error("Fatal Error", err)
 		t.Fatal(err)
 	}
 
 	//create fake node[0] known to artificially reach SyncLimit
-	node0KnownEvents := nodes[0].core.knownEvents()
+	node0KnownEvents := nodes[0].core.KnownEvents()
 	for k := range node0KnownEvents {
 		node0KnownEvents[k] = 0
 	}
@@ -224,7 +168,7 @@ func TestShutdown(t *testing.T) {
 
 	genesisPeerSet := clonePeerSet(t, peers.Peers)
 
-	nodes := initNodes(keys, peers, genesisPeerSet, 1000, 1000, 5, false, "inmem", 5*time.Millisecond, false, "", t)
+	nodes := initNodes(keys, peers, genesisPeerSet, 1000, 1000, 5, false, "inmem", 5*time.Millisecond, t)
 	runNodes(nodes, false)
 	defer shutdownNodes(nodes)
 
@@ -244,9 +188,9 @@ func TestBootstrapAllNodes(t *testing.T) {
 	keys, peers := initPeers(t, 4)
 	genesisPeerSet := clonePeerSet(t, peers.Peers)
 
-	nodes := initNodes(keys, peers, genesisPeerSet, 100000, 1000, 10, false, "badger", 10*time.Millisecond, false, "", t)
+	nodes := initNodes(keys, peers, genesisPeerSet, 100000, 1000, 10, false, "badger", 10*time.Millisecond, t)
 
-	err := gossip(nodes, 10, true)
+	err := gossip(nodes, 10, true, 3*time.Second)
 	if err != nil {
 		t.Error("Fatal Error", err)
 		t.Fatal(err)
@@ -257,7 +201,7 @@ func TestBootstrapAllNodes(t *testing.T) {
 	// step and advance it to 20 blocks
 	newNodes := recycleNodes(nodes, t)
 
-	err = gossip(newNodes, 20, true)
+	err = gossip(newNodes, 20, true, 3*time.Second)
 	if err != nil {
 		t.Error("Fatal Error 2", err)
 		t.Fatal(err)
@@ -274,9 +218,8 @@ func BenchmarkGossip(b *testing.B) {
 
 		genesisPeerSet := clonePeerSet(b, peers.Peers)
 
-		nodes := initNodes(keys, peers, genesisPeerSet, 1000, 1000, 5, false, "inmem", 5*time.Millisecond, false, "", b)
-
-		gossip(nodes, 50, true)
+		nodes := initNodes(keys, peers, genesisPeerSet, 1000, 1000, 5, false, "inmem", 5*time.Millisecond, b)
+		gossip(nodes, 50, true, 3*time.Second)
 	}
 }
 
@@ -327,14 +270,12 @@ func newNode(peer *peers.Peer,
 	enableSyncLimit bool,
 	storeType string,
 	heartbeatTimeout time.Duration,
-	webrtc bool,
-	signalServer string,
+
 	t testing.TB) *Node {
 
 	conf := config.NewTestConfig(t, common.TestLogLevel)
 	conf.HeartbeatTimeout = heartbeatTimeout
-	conf.MaxPool = 3
-	conf.TCPTimeout = 2 * time.Second
+	conf.TCPTimeout = time.Second
 	conf.JoinTimeout = joinTimeoutSeconds * time.Second
 	conf.CacheSize = cacheSize
 	conf.SyncLimit = syncLimit
@@ -342,50 +283,11 @@ func newNode(peer *peers.Peer,
 
 	t.Logf("Starting node on %s", peer.NetAddr)
 
-	var trans net.Transport
-	var err error
-
-	if !webrtc {
-		trans, err = net.NewTCPTransport(
-			peer.NetAddr,
-			"",
-			conf.MaxPool,
-			conf.TCPTimeout,
-			conf.JoinTimeout,
-			conf.Logger(),
-		)
-		if err != nil {
-			t.Fatalf("Fatal failed to create transport for peer %d: %s", peer.ID(), err)
-		}
-	} else {
-		signal, err := wamp.NewClient(
-			signalServer,
-			realm,
-			peer.NetAddr,
-			certFile,
-			false,
-			conf.TCPTimeout,
-			common.NewTestEntry(t, common.TestLogLevel),
-		)
-
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		trans, err = net.NewWebRTCTransport(
-			signal,
-			conf.ICEServers(),
-			conf.MaxPool,
-			conf.TCPTimeout,
-			conf.JoinTimeout,
-			conf.Logger(),
-		)
-
-		if err != nil {
-			t.Fatal(err)
-		}
+	trans, err := net.NewTCPTransport(peer.NetAddr,
+		"", 2, conf.TCPTimeout, conf.JoinTimeout, conf.Logger())
+	if err != nil {
+		t.Fatalf("Fatal failed to create transport for peer %d: %s", peer.ID(), err)
 	}
-
 	go trans.Listen()
 
 	var store hg.Store
@@ -427,8 +329,6 @@ func initNodes(keys []*ecdsa.PrivateKey,
 	enableSyncLimit bool,
 	storeType string,
 	heartbeatTimeout time.Duration,
-	webrtc bool,
-	signalAddress string,
 	t testing.TB) []*Node {
 
 	nodes := []*Node{}
@@ -451,8 +351,6 @@ func initNodes(keys []*ecdsa.PrivateKey,
 			enableSyncLimit,
 			storeType,
 			heartbeatTimeout,
-			webrtc,
-			signalAddress,
 			t)
 
 		nodes = append(nodes, node)
@@ -520,9 +418,9 @@ func runNodes(nodes []*Node, gossip bool) {
 	}
 }
 
-func gossip(nodes []*Node, target int, shutdown bool) error {
+func gossip(nodes []*Node, target int, shutdown bool, timeout time.Duration) error {
 	runNodes(nodes, true)
-	err := bombardAndWait(nodes, target)
+	err := bombardAndWait(nodes, target, timeout)
 	if err != nil {
 		return err
 	}
@@ -532,80 +430,44 @@ func gossip(nodes []*Node, target int, shutdown bool) error {
 	return nil
 }
 
-func bombardAndWait(nodes []*Node, target int) error {
+func bombardAndWait(nodes []*Node, target int, timeout time.Duration) error {
 	//send a lot of random transactions to the nodes
 	quit := make(chan struct{})
 	makeRandomTransactions(nodes, quit)
 
 	//wait until all nodes reach at least block 'target'
-
-	// This function has been refactored. The original version specified a
-	// timeout for reaching block number target. This meant that if a node
-	// stalled, you would need to wait for the entire timeout period before
-	// the error is flagged. Additionally, the timeout needed to be geared for
-	// the slowest configuration of machine likely to run the test - which
-	// lead to inflation of the timeout times.
-	//
-	// The revised version instead specifies a timeout for an individual node
-	// to increment its block number. The outer loops ticks every 3 seconds
-	// and if the block numbers for each node (nodeBlockNums) do not
-	// progress then it is a failure.
-
-	nodelength := len(nodes)
-	nodeBlockNums := make([]int, nodelength)
-	for i, n := range nodes {
-		nodeBlockNums[i] = n.core.getLastBlockIndex()
-	}
-
-OUTERFOR:
+	stopper := time.After(timeout)
 	for {
-
-		stopper := time.After(3 * time.Second)
-
-	INNERFOR:
-		for {
-			select {
-			case <-stopper:
-
-				for i, n := range nodes {
-					ce := n.core.getLastBlockIndex()
-					if ce <= nodeBlockNums[i] {
-						return fmt.Errorf("TIMEOUT in bombardAndWait node %d waiting for block %d, stalled at %d",
-							i, target, ce)
-					}
-					nodeBlockNums[i] = ce
+		select {
+		case <-stopper:
+			return fmt.Errorf("TIMEOUT in bombardAndWait waiting for block %d, currently %d",
+				target, nodes[0].core.GetLastBlockIndex())
+		default:
+		}
+		time.Sleep(10 * time.Millisecond)
+		done := true
+		for _, n := range nodes {
+			ce := n.core.GetLastBlockIndex()
+			if ce < target {
+				done = false
+				break
+			} else {
+				//wait until the target block has retrieved a state hash from
+				//the app
+				targetBlock, err := n.core.hg.Store.GetBlock(target)
+				if err != nil {
+					return fmt.Errorf("Error: Couldn't find target block: %v, ce: %d", err, ce)
 				}
-
-				break INNERFOR
-			default:
-			}
-			time.Sleep(10 * time.Millisecond)
-			done := true
-			for _, n := range nodes {
-				ce := n.core.getLastBlockIndex()
-				if ce < target {
+				if len(targetBlock.StateHash()) == 0 {
 					done = false
 					break
-				} else {
-					//wait until the target block has retrieved a state hash from
-					//the app
-					targetBlock, err := n.core.hg.Store.GetBlock(target)
-					if err != nil {
-						return fmt.Errorf("Error: Couldn't find target block: %v, ce: %d", err, ce)
-					}
-					if len(targetBlock.StateHash()) == 0 {
-						done = false
-						break
-					}
 				}
 			}
-
-			if done {
-				break OUTERFOR
-			}
+		}
+		if done {
+			break
 		}
 	}
-
 	close(quit)
 	return nil
 }
@@ -689,22 +551,6 @@ func checkGossip(nodes []*Node, fromBlock int, t *testing.T) {
 				t.Fatalf("Fatal checkGossip: Difference in Block %d. ###### nodes[0]: %#v ###### nodes[%d]: %#v", block.Index(), block.Body, k, oBlock.Body)
 			}
 		}
-	}
-}
-
-func checkTimestamps(node *Node, t *testing.T) {
-	lastTimestamp := int64(0)
-	for i := 0; i < node.core.hg.Store.LastBlockIndex(); i++ {
-		block, err := node.core.hg.Store.GetBlock(i)
-		if err != nil {
-			t.Fatalf("Fatal checkTimestamps: %v ", err)
-		}
-
-		if block.Timestamp() < lastTimestamp {
-			t.Fatalf("not increasing timestamp: block %d (%d) <= %d", i, block.Timestamp(), lastTimestamp)
-		}
-
-		lastTimestamp = block.Timestamp()
 	}
 }
 

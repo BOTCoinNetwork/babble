@@ -1,4 +1,3 @@
-// Package babble implements a component that the TCP AppProxy can connect to.
 package babble
 
 import (
@@ -9,11 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// SocketBabbleProxy is a Golang implementation of a service that binds to a
-// remote Babble over an RPC/TCP connection. It implements handlers for the RPC
-// requests sent by the SocketAppProxy, and submits transactions to Babble via
-// an RPC request. A SocketBabbleProxy can be implemented in any programming
-// language as long as it implements the AppProxy interface over RPC.
+// SocketBabbleProxy ...
 type SocketBabbleProxy struct {
 	nodeAddress string
 	bindAddress string
@@ -24,7 +19,7 @@ type SocketBabbleProxy struct {
 	server *SocketBabbleProxyServer
 }
 
-// NewSocketBabbleProxy creates a new SocketBabbleProxy
+// NewSocketBabbleProxy ...
 func NewSocketBabbleProxy(
 	nodeAddr string,
 	bindAddr string,
@@ -60,9 +55,10 @@ func NewSocketBabbleProxy(
 	return proxy, nil
 }
 
-// SubmitTx submits a transaction to Babble
+// SubmitTx ...
 func (p *SocketBabbleProxy) SubmitTx(tx []byte) error {
 	ack, err := p.client.SubmitTx(tx)
+
 	if err != nil {
 		return err
 	}

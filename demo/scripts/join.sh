@@ -2,8 +2,7 @@
 
 N=${1:-5}
 FASTSYNC=${2:-false}
-WEBRTC=${3:-false}
-DEST=${4:-"$PWD/conf"}
+DEST=${3:-"$PWD/conf"}
 
 dest=$DEST/node$N
 
@@ -14,9 +13,6 @@ docker run  \
     -u $(id -u) \
     -v $dest:/.babble \
     --rm mosaicnetworks/babble:latest keygen 
-
-# copy signal TLS certificate
-cp $PWD/../src/net/signal/wamp/test_data/cert.pem $dest/cert.pem
 
 # get genesis.peers.json
 echo "Fetching peers.genesis.json from node1"
@@ -44,9 +40,7 @@ docker create --name=node$N --net=babblenet --ip=172.77.5.$N mosaicnetworks/babb
     --service-listen="172.77.5.$N:80" \
     --fast-sync=$FASTSYNC \
     --log="debug" \
-    --sync-limit=100 \
-    --webrtc=$WEBRTC \
-    --signal-addr="172.77.15.1:2443"
+    --sync-limit=1000 \
 
  # --store \
 

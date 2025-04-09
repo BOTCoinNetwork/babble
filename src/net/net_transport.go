@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net"
 	"sync"
 	"time"
@@ -25,11 +24,6 @@ const (
 	rpcFastForward
 )
 
-const (
-	// we need this high buffer size for compatibility with WebRTC
-	bufSize = math.MaxUint16
-)
-
 var (
 	// ErrTransportShutdown is returned when operations on a transport are
 	// invoked after it's been terminated.
@@ -37,16 +31,17 @@ var (
 )
 
 /*
-NetworkTransport provides a network based transport that can be used to
-communicate with babble on remote machines. It requires an underlying stream
-layer to provide a stream abstraction, which can be simple TCP, or WebRTC.
+NetworkTransport provides a network based transport that can be
+used to communicate with babble on remote machines. It requires
+an underlying stream layer to provide a stream abstraction, which can
+be simple TCP, TLS, etc.
 
-This transport is very simple and lightweight. Each RPC request is framed by
-sending a byte that indicates the message type, followed by the json encoded
-request.
+This transport is very simple and lightweight. Each RPC request is
+framed by sending a byte that indicates the message type, followed
+by the json encoded request.
 
-The response is an error string followed by the response object, both are
-encoded using JSON
+The response is an error string followed by the response object,
+both are encoded using msgpack
 */
 type NetworkTransport struct {
 	logger *logrus.Entry
@@ -67,6 +62,18 @@ type NetworkTransport struct {
 	joinTimeout time.Duration
 }
 
+// StreamLayer is used with the NetworkTransport to provide
+// the low level stream abstraction.
+type StreamLayer interface {
+	net.Listener
+
+	// Dial is used to create a new outgoing connection
+	Dial(address string, timeout time.Duration) (net.Conn, error)
+
+	// AdvertiseAddr returns the publicly-reachable address of the stream
+	AdvertiseAddr() string
+}
+
 type netConn struct {
 	target string
 	conn   net.Conn
@@ -76,13 +83,13 @@ type netConn struct {
 	enc    *json.Encoder
 }
 
-// Release closes the underlying connection
+// Release ...
 func (n *netConn) Release() error {
 	return n.conn.Close()
 }
 
-// NewNetworkTransport creates a new network transport with the given
-// StreamLayer. The maxPool controls how many connections we will pool (per
+// NewNetworkTransport creates a new network transport with the given dialer
+// and listener. The maxPool controls how many connections we will pool (per
 // target). The timeout is used to apply I/O deadlines.
 func NewNetworkTransport(
 	stream StreamLayer,
@@ -120,7 +127,6 @@ func (n *NetworkTransport) Close() error {
 	if !n.shutdown {
 		close(n.shutdownCh)
 		n.stream.Close()
-
 		n.shutdown = true
 	}
 	return nil
@@ -133,13 +139,7 @@ func (n *NetworkTransport) Consumer() <-chan RPC {
 
 // LocalAddr implements the Transport interface.
 func (n *NetworkTransport) LocalAddr() string {
-	addr := n.stream.Addr()
-
-	if addr != nil {
-		return addr.String()
-	}
-
-	return ""
+	return n.stream.Addr().String()
 }
 
 // AdvertiseAddr implements the Transport interface.
@@ -191,8 +191,8 @@ func (n *NetworkTransport) getConn(target string, timeout time.Duration) (*netCo
 	netConn := &netConn{
 		target: target,
 		conn:   conn,
-		r:      bufio.NewReaderSize(conn, bufSize),
-		w:      bufio.NewWriterSize(conn, bufSize),
+		r:      bufio.NewReader(conn),
+		w:      bufio.NewWriter(conn),
 	}
 	// Setup encoder/decoders
 	netConn.dec = json.NewDecoder(netConn.r)
@@ -260,7 +260,6 @@ func (n *NetworkTransport) genericRPC(target string, rpcType uint8, timeout time
 	if canReturn {
 		n.returnConn(conn)
 	}
-
 	return err
 }
 
@@ -334,8 +333,8 @@ func (n *NetworkTransport) Listen() {
 // handleConn is used to handle an inbound connection for its lifespan.
 func (n *NetworkTransport) handleConn(conn net.Conn) {
 	defer conn.Close()
-	r := bufio.NewReaderSize(conn, bufSize)
-	w := bufio.NewWriterSize(conn, bufSize)
+	r := bufio.NewReader(conn)
+	w := bufio.NewWriter(conn)
 	dec := json.NewDecoder(r)
 	enc := json.NewEncoder(w)
 
@@ -428,6 +427,5 @@ func (n *NetworkTransport) handleCommand(r *bufio.Reader, dec *json.Decoder, enc
 	case <-n.shutdownCh:
 		return ErrTransportShutdown
 	}
-
 	return nil
 }

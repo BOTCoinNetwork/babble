@@ -7,10 +7,7 @@ import (
 	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
-// InmemStore implements the Store interface with inmemory caches. When the
-// caches are full, older items are evicted, so InmemStore is not suitable for
-// long running deployments where joining nodes expect to sync from the
-// beginning of a hashgraph.
+// InmemStore ...
 type InmemStore struct {
 	cacheSize              int
 	eventCache             *cm.LRU          //hash => Event
@@ -27,8 +24,7 @@ type InmemStore struct {
 	lastBlock              int
 }
 
-// NewInmemStore creates a new InmemStore where all caches are limited by
-// cacheSize items.
+// NewInmemStore ...
 func NewInmemStore(cacheSize int) *InmemStore {
 	store := &InmemStore{
 		cacheSize:              cacheSize,
@@ -39,27 +35,25 @@ func NewInmemStore(cacheSize int) *InmemStore {
 		consensusCache:         cm.NewRollingIndex("ConsensusCache", cacheSize),
 		peerSetCache:           NewPeerSetCache(),
 		participantEventsCache: NewParticipantEventsCache(cacheSize),
-		roots:                  make(map[string]*Root),
-		lastRound:              -1,
-		lastBlock:              -1,
-		lastConsensusEvents:    map[string]string{},
+		roots:               make(map[string]*Root),
+		lastRound:           -1,
+		lastBlock:           -1,
+		lastConsensusEvents: map[string]string{},
 	}
 	return store
 }
 
-// CacheSize returns the size limit that was provided to all the caches that
-// make up the InmemStore. This does not correspond to the total number of items
-// in the store or the total number of items allowed in the store.
+// CacheSize ...
 func (s *InmemStore) CacheSize() int {
 	return s.cacheSize
 }
 
-// GetPeerSet implements the Store interface.
+// GetPeerSet ...
 func (s *InmemStore) GetPeerSet(round int) (*peers.PeerSet, error) {
 	return s.peerSetCache.Get(round)
 }
 
-// SetPeerSet implements the Store interface.
+//SetPeerSet updates the peerSetCache and participantEventsCache
 func (s *InmemStore) SetPeerSet(round int, peerSet *peers.PeerSet) error {
 	//Update PeerSetCache
 	err := s.peerSetCache.Set(round, peerSet)
@@ -88,27 +82,27 @@ func (s *InmemStore) addParticipant(p *peers.Peer) error {
 	return nil
 }
 
-// GetAllPeerSets implements the Store interface.
+// GetAllPeerSets ...
 func (s *InmemStore) GetAllPeerSets() (map[int][]*peers.Peer, error) {
 	return s.peerSetCache.GetAll()
 }
 
-// FirstRound implements the Store interface.
+// FirstRound ...
 func (s *InmemStore) FirstRound(id uint32) (int, bool) {
 	return s.peerSetCache.FirstRound(id)
 }
 
-// RepertoireByPubKey implements the Store interface.
+// RepertoireByPubKey ...
 func (s *InmemStore) RepertoireByPubKey() map[string]*peers.Peer {
 	return s.peerSetCache.RepertoireByPubKey()
 }
 
-// RepertoireByID implements the Store interface.
+// RepertoireByID ...
 func (s *InmemStore) RepertoireByID() map[uint32]*peers.Peer {
 	return s.peerSetCache.RepertoireByID()
 }
 
-// GetEvent implements the Store interface.
+// GetEvent ...
 func (s *InmemStore) GetEvent(key string) (*Event, error) {
 	res, ok := s.eventCache.Get(key)
 	if !ok {
@@ -118,7 +112,7 @@ func (s *InmemStore) GetEvent(key string) (*Event, error) {
 	return res.(*Event), nil
 }
 
-// SetEvent implements the Store interface.
+// SetEvent ...
 func (s *InmemStore) SetEvent(event *Event) error {
 	key := event.Hex()
 	_, err := s.GetEvent(key)
@@ -134,34 +128,34 @@ func (s *InmemStore) SetEvent(event *Event) error {
 	return nil
 }
 
-// ParticipantEvents implements the Store interface.
+// ParticipantEvents ...
 func (s *InmemStore) ParticipantEvents(participant string, skip int) ([]string, error) {
 	return s.participantEventsCache.Get(participant, skip)
 }
 
-// ParticipantEvent implements the Store interface.
+// ParticipantEvent ...
 func (s *InmemStore) ParticipantEvent(participant string, index int) (string, error) {
 	return s.participantEventsCache.GetItem(participant, index)
 }
 
-// LastEventFrom implements the Store interface.
+// LastEventFrom ...
 func (s *InmemStore) LastEventFrom(participant string) (last string, err error) {
 	last, err = s.participantEventsCache.GetLast(participant)
 	return
 }
 
-// LastConsensusEventFrom implements the Store interface.
+// LastConsensusEventFrom ...
 func (s *InmemStore) LastConsensusEventFrom(participant string) (last string, err error) {
 	last, _ = s.lastConsensusEvents[participant]
 	return
 }
 
-// KnownEvents implements the Store interface.
+// KnownEvents ...
 func (s *InmemStore) KnownEvents() map[uint32]int {
 	return s.participantEventsCache.Known()
 }
 
-// ConsensusEvents implements the Store interface.
+// ConsensusEvents ...
 func (s *InmemStore) ConsensusEvents() []string {
 	lastWindow, _ := s.consensusCache.GetLastWindow()
 	res := make([]string, len(lastWindow))
@@ -171,12 +165,12 @@ func (s *InmemStore) ConsensusEvents() []string {
 	return res
 }
 
-// ConsensusEventsCount implements the Store interface.
+// ConsensusEventsCount ...
 func (s *InmemStore) ConsensusEventsCount() int {
 	return s.totConsensusEvents
 }
 
-// AddConsensusEvent implements the Store interface.
+// AddConsensusEvent ...
 func (s *InmemStore) AddConsensusEvent(event *Event) error {
 	s.consensusCache.Set(event.Hex(), s.totConsensusEvents)
 	s.totConsensusEvents++
@@ -184,7 +178,7 @@ func (s *InmemStore) AddConsensusEvent(event *Event) error {
 	return nil
 }
 
-// GetRound implements the Store interface.
+// GetRound ...
 func (s *InmemStore) GetRound(r int) (*RoundInfo, error) {
 	res, ok := s.roundCache.Get(r)
 	if !ok {
@@ -193,7 +187,7 @@ func (s *InmemStore) GetRound(r int) (*RoundInfo, error) {
 	return res.(*RoundInfo), nil
 }
 
-// SetRound implements the Store interface.
+// SetRound ...
 func (s *InmemStore) SetRound(r int, round *RoundInfo) error {
 	s.roundCache.Add(r, round)
 	if r > s.lastRound {
@@ -202,12 +196,12 @@ func (s *InmemStore) SetRound(r int, round *RoundInfo) error {
 	return nil
 }
 
-// LastRound implements the Store interface.
+// LastRound ...
 func (s *InmemStore) LastRound() int {
 	return s.lastRound
 }
 
-// RoundWitnesses implements the Store interface.
+// RoundWitnesses ...
 func (s *InmemStore) RoundWitnesses(r int) []string {
 	round, err := s.GetRound(r)
 	if err != nil {
@@ -216,7 +210,7 @@ func (s *InmemStore) RoundWitnesses(r int) []string {
 	return round.Witnesses()
 }
 
-// RoundEvents implements the Store interface.
+// RoundEvents ...
 func (s *InmemStore) RoundEvents(r int) int {
 	round, err := s.GetRound(r)
 	if err != nil {
@@ -225,7 +219,7 @@ func (s *InmemStore) RoundEvents(r int) int {
 	return len(round.CreatedEvents)
 }
 
-// GetRoot implements the Store interface.
+// GetRoot ...
 func (s *InmemStore) GetRoot(participant string) (*Root, error) {
 	res, ok := s.roots[participant]
 	if !ok {
@@ -234,7 +228,7 @@ func (s *InmemStore) GetRoot(participant string) (*Root, error) {
 	return res, nil
 }
 
-// GetBlock implements the Store interface.
+// GetBlock ...
 func (s *InmemStore) GetBlock(index int) (*Block, error) {
 	res, ok := s.blockCache.Get(index)
 	if !ok {
@@ -243,7 +237,7 @@ func (s *InmemStore) GetBlock(index int) (*Block, error) {
 	return res.(*Block), nil
 }
 
-// SetBlock implements the Store interface.
+// SetBlock ...
 func (s *InmemStore) SetBlock(block *Block) error {
 	index := block.Index()
 	_, err := s.GetBlock(index)
@@ -257,12 +251,12 @@ func (s *InmemStore) SetBlock(block *Block) error {
 	return nil
 }
 
-// LastBlockIndex implements the Store interface.
+// LastBlockIndex ...
 func (s *InmemStore) LastBlockIndex() int {
 	return s.lastBlock
 }
 
-// GetFrame implements the Store interface.
+// GetFrame ...
 func (s *InmemStore) GetFrame(index int) (*Frame, error) {
 	res, ok := s.frameCache.Get(index)
 	if !ok {
@@ -271,7 +265,7 @@ func (s *InmemStore) GetFrame(index int) (*Frame, error) {
 	return res.(*Frame), nil
 }
 
-// SetFrame implements the Store interface.
+// SetFrame ...
 func (s *InmemStore) SetFrame(frame *Frame) error {
 	index := frame.Round
 	_, err := s.GetFrame(index)
@@ -282,7 +276,7 @@ func (s *InmemStore) SetFrame(frame *Frame) error {
 	return nil
 }
 
-// Reset implements the Store interface.
+// Reset ...
 func (s *InmemStore) Reset(frame *Frame) error {
 	//Clear all caches
 	s.peerSetCache = NewPeerSetCache()
@@ -310,12 +304,12 @@ func (s *InmemStore) Reset(frame *Frame) error {
 	return s.SetFrame(frame)
 }
 
-// Close implements the Store interface.
+// Close ...
 func (s *InmemStore) Close() error {
 	return nil
 }
 
-// StorePath implements the Store interface.
+// StorePath ...
 func (s *InmemStore) StorePath() string {
 	return ""
 }

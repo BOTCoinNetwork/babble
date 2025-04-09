@@ -11,48 +11,18 @@ import (
 
 	"github.com/BOTCoinNetwork/babble/src/common"
 	"github.com/BOTCoinNetwork/babble/src/proxy"
-	webrtc "github.com/pion/webrtc/v2"
 	"github.com/sirupsen/logrus"
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 )
 
-// Default filenames.
 const (
-	// DefaultKeyfile is the default name of the file containing the validator's
-	// private key
+	// DefaultKeyfile defines the default name of the file containing the
+	// validator's private key
 	DefaultKeyfile = "priv_key"
 
-	// DefaultBadgerFile is the default name of the folder containing the Badger
-	// database
+	// DefaultBadgerFile defines the default name of the folder containing the
+	// Badger database
 	DefaultBadgerFile = "badger_db"
-
-	// DefaultCertFile is the default name of the file containing the TLS
-	// certificate for connecting to the signaling server.
-	DefaultCertFile = "cert.pem"
-)
-
-// Default configuration values.
-const (
-	DefaultLogLevel             = "debug"
-	DefaultBindAddr             = "127.0.0.1:1337"
-	DefaultServiceAddr          = "127.0.0.1:8000"
-	DefaultHeartbeatTimeout     = 10 * time.Millisecond
-	DefaultSlowHeartbeatTimeout = 1000 * time.Millisecond
-	DefaultTCPTimeout           = 1000 * time.Millisecond
-	DefaultJoinTimeout          = 10000 * time.Millisecond
-	DefaultCacheSize            = 10000
-	DefaultSyncLimit            = 1000
-	DefaultMaxPool              = 2
-	DefaultStore                = false
-	DefaultMaintenanceMode      = false
-	DefaultSuspendLimit         = 100
-	DefaultWebRTC               = false
-	DefaultSignalAddr           = "127.0.0.1:2443"
-	DefaultSignalRealm          = "main"
-	DefaultSignalSkipVerify     = false
-	DefaultICEAddress           = "stun:stun.l.google.com:19302"
-	DefaultICEUsername          = ""
-	DefaultICEPassword          = ""
 )
 
 // Config contains all the configuration properties of a Babble node.
@@ -65,26 +35,27 @@ type Config struct {
 	LogLevel string `mapstructure:"log"`
 
 	// BindAddr is the local address:port where this node gossips with other
-	// nodes. in some cases, there may be a routable address that cannot be
-	// bound. Use AdvertiseAddr to advertise a different address to support
-	// this. If this address is not routable, the node will be in a constant
-	// flapping state as other nodes will treat the non-routability as a
-	// failure.
+	// nodes. By default, this is "0.0.0.0", meaning Babble will bind to all
+	// addresses on the local machine. However, in some cases, there may be a
+	// routable address that cannot be bound. Use AdvertiseAddr to enable
+	// gossiping a different address to support this. If this address is not
+	// routable, the node will be in a constant flapping state as other nodes
+	// will treat the non-routability as a failure
 	BindAddr string `mapstructure:"listen"`
 
 	// AdvertiseAddr is used to change the address that we advertise to other
-	// nodes.
+	// nodes in the cluster
 	AdvertiseAddr string `mapstructure:"advertise"`
 
 	// NoService disables the HTTP API service.
 	NoService bool `mapstructure:"no-service"`
 
-	// ServiceAddr is the address:port of the optional HTTP service. If not
+	// ServiceAddr is the address:port that serves the user-facing API. If not
 	// specified, and "no-service" is not set, the API handlers are registered
 	// with the DefaultServerMux of the http package. It is possible that
 	// another server in the same process is simultaneously using the
 	// DefaultServerMux. In which case, the handlers will be accessible from
-	// both servers. This is usefull when Babble is used in-memory and expected
+	// both servers. This is usefull when Babble is used in-memory and expecpted
 	// to use the same endpoint (address:port) as the application's API.
 	ServiceAddr string `mapstructure:"service-listen"`
 
@@ -100,8 +71,7 @@ type Config struct {
 	// routines.
 	MaxPool int `mapstructure:"max-pool"`
 
-	// TCPTimeout is the timeout of gossip RPC connections. It also applies to
-	// WebRTC connections.
+	// TCPTimeout is the timeout of gossip TCP connections.
 	TCPTimeout time.Duration `mapstructure:"timeout"`
 
 	// JoinTimeout is the timeout of Join Requests
@@ -111,10 +81,10 @@ type Config struct {
 	// SyncResponse or EagerSyncRequest
 	SyncLimit int `mapstructure:"sync-limit"`
 
-	// EnableFastSync enables the FastSync protocol.
+	// EnableFastSync determines whether or not to enable the FastSync protocol.
 	EnableFastSync bool `mapstructure:"fast-sync"`
 
-	// Store activates persistant storage.
+	// Store is a flag that determines whether or not to use persistant storage.
 	Store bool `mapstructure:"store"`
 
 	// DatabaseDir is the directory containing database files.
@@ -134,60 +104,19 @@ type Config struct {
 	// bootstrapped from an existing database.
 	MaintenanceMode bool `mapstructure:"maintenance-mode"`
 
-	// SuspendLimit is the multiplier that is dynamically applied to the number
-	// of validators to determine the limit of undetermined events (events which
-	// haven't reached consensus) that will cause the node to become suspended.
-	// For example, if there are 4 validators and SuspendLimit=100, then the
-	// node will suspend itself after registering 400 undetermined events.
+	// SuspendLimit is the number of Undetermined Events (Events which haven't
+	// reached consensus) that will cause the node to become suspended
 	SuspendLimit int `mapstructure:"suspend-limit"`
 
 	// Moniker defines the friendly name of this node
 	Moniker string `mapstructure:"moniker"`
 
-	// WebRTC determines whether to use a WebRTC transport. WebRTC uses a very
-	// different protocol stack than TCP/IP and enables peers to connect
-	// directly even with multiple layers of NAT between them, such as in
-	// cellular networks. WebRTC relies on a signalling server who's address is
-	// specified by SignalAddr. When WebRTC is enabled, BindAddr and
-	// AdvertiseAddr are ignored.
-	WebRTC bool `mapstructure:"webrtc"`
-
-	// SignalAddr is the IP:PORT of the WebRTC signaling server. It is ignored
-	// when WebRTC is not enabled. The connection is over secured web-sockets,
-	// wss, and it possible to include a self-signed certificated in a file
-	// called cert.pem in the datadir. If no self-signed certificate is found,
-	// the server's certifacate signing authority better be trusted.
-	SignalAddr string `mapstructure:"signal-addr"`
-
-	// SignalRealm is an administrative domain within the WebRTC signaling
-	// server. WebRTC signaling messages are only routed within a Realm.
-	SignalRealm string `mapstructure:"signal-realm"`
-
-	// SignalSkipVerify controls whether the signal client verifies the server's
-	// certificate chain and host name. If SignalSkipVerify is true, TLS accepts
-	// any certificate presented by the server and any host name in that
-	// certificate. In this mode, TLS is susceptible to man-in-the-middle
-	// attacks. This should be used only for testing.
-	SignalSkipVerify bool `mapstructure:"signal-skip-verify"`
-
-	// ICE address is the URI of a server providing services for ICE, such as
-	// STUN and TURN. The server should support password-based authentication,
-	// as Babble will try to connect with the username and password provided in
-	// ICEUsername and ICEPassword below. Username adn password can also be
-	// empty if the ICE server does not use authentication.
-	// https://developer.mozilla.org/en-US/docs/Web/API/RTCIceServer/urls
-	ICEAddress string `mapstructure:"ice-addr"`
-
-	// ICEUsername is the username that will be used to authenticate with the
-	// ICE server defined in ICEAddress.
-	ICEUsername string `mapstructure:"ice-username"`
-
-	// ICEPassword is the password that will be used to authenticate with the
-	// ICE server defined in ICEAddress.
-	ICEPassword string `mapstructure:"ice-password"`
+	// LoadPeers determines whether or not to attempt loading the peer-set from
+	// a local json file.
+	LoadPeers bool
 
 	// Proxy is the application proxy that enables Babble to communicate with
-	// the application.
+	// application.
 	Proxy proxy.AppProxy
 
 	// Key is the private key of the validator.
@@ -196,41 +125,35 @@ type Config struct {
 	logger *logrus.Logger
 }
 
-// NewDefaultConfig returns a config object with default values. All the default
-// configuration values are set, even if they cancel eachother out. For example,
-// When WebRTC = false, all the Signal options are ignored. Likewise, when
-// WebRTC = true, BindAddr and ServiceAddr are not used.
+// NewDefaultConfig returns the a config object with default values.
 func NewDefaultConfig() *Config {
+
 	config := &Config{
 		DataDir:              DefaultDataDir(),
-		LogLevel:             DefaultLogLevel,
-		BindAddr:             DefaultBindAddr,
-		ServiceAddr:          DefaultServiceAddr,
-		HeartbeatTimeout:     DefaultHeartbeatTimeout,
-		SlowHeartbeatTimeout: DefaultSlowHeartbeatTimeout,
-		TCPTimeout:           DefaultTCPTimeout,
-		JoinTimeout:          DefaultJoinTimeout,
-		CacheSize:            DefaultCacheSize,
-		SyncLimit:            DefaultSyncLimit,
-		MaxPool:              DefaultMaxPool,
-		Store:                DefaultStore,
-		MaintenanceMode:      DefaultMaintenanceMode,
+		LogLevel:             "debug",
+		BindAddr:             "127.0.0.1:1337",
+		ServiceAddr:          "127.0.0.1:8000",
+		HeartbeatTimeout:     10 * time.Millisecond,
+		SlowHeartbeatTimeout: 1000 * time.Millisecond,
+		TCPTimeout:           1000 * time.Millisecond,
+		JoinTimeout:          10000 * time.Millisecond,
+		CacheSize:            5000,
+		SyncLimit:            1000,
+		MaxPool:              2,
+		Store:                false,
+		MaintenanceMode:      false,
 		DatabaseDir:          DefaultDatabaseDir(),
-		SuspendLimit:         DefaultSuspendLimit,
-		WebRTC:               DefaultWebRTC,
-		SignalAddr:           DefaultSignalAddr,
-		SignalRealm:          DefaultSignalRealm,
-		SignalSkipVerify:     DefaultSignalSkipVerify,
-		ICEAddress:           DefaultICEAddress,
-		ICEUsername:          DefaultICEUsername,
-		ICEPassword:          DefaultICEPassword,
+		LoadPeers:            true,
+		SuspendLimit:         300,
 	}
 
 	return config
 }
 
 // NewTestConfig returns a config object with default values and a special
-// logger for debugging tests.
+// logger. the logger forces formatting and colors even when there is no tty
+// attached, which makes for more readable logs. The logger also provides info
+// about the calling function.
 func NewTestConfig(t testing.TB, level logrus.Level) *Config {
 	config := NewDefaultConfig()
 	config.logger = common.NewTestLogger(t, level)
@@ -251,27 +174,6 @@ func (c *Config) SetDataDir(dataDir string) {
 // Keyfile returns the full path of the file containing the private key.
 func (c *Config) Keyfile() string {
 	return filepath.Join(c.DataDir, DefaultKeyfile)
-}
-
-// CertFile returns the full path of the file containing the signal-server TLS
-// certificate.
-func (c *Config) CertFile() string {
-	return filepath.Join(c.DataDir, DefaultCertFile)
-}
-
-// ICEServers returns a list of ICE servers used by the WebRTCStreamLayer to
-// connect to peers. The list contains a single item which is based on the
-// configuration passed through the config object. This configuration is limited
-// to a single server, with password-based authentication.
-func (c *Config) ICEServers() []webrtc.ICEServer {
-	return []webrtc.ICEServer{
-		{
-			URLs:           []string{c.ICEAddress},
-			Username:       c.ICEUsername,
-			Credential:     c.ICEPassword,
-			CredentialType: webrtc.ICECredentialTypePassword,
-		},
-	}
 }
 
 // Logger returns a formatted logrus Entry, with prefix set to "babble".
@@ -335,15 +237,5 @@ func LogLevel(l string) logrus.Level {
 		return logrus.PanicLevel
 	default:
 		return logrus.DebugLevel
-	}
-}
-
-// DefaultICEServers returns the default ICE configuration with one URL pointing
-// to a public Google STUN server.
-func DefaultICEServers() []webrtc.ICEServer {
-	return []webrtc.ICEServer{
-		{
-			URLs: []string{DefaultICEAddress},
-		},
 	}
 }

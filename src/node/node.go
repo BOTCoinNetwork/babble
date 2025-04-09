@@ -12,7 +12,6 @@ import (
 	"github.com/BOTCoinNetwork/babble/src/config"
 	hg "github.com/BOTCoinNetwork/babble/src/hashgraph"
 	"github.com/BOTCoinNetwork/babble/src/net"
-	_state "github.com/BOTCoinNetwork/babble/src/node/state"
 	"github.com/BOTCoinNetwork/babble/src/peers"
 	"github.com/BOTCoinNetwork/babble/src/proxy"
 	"github.com/sirupsen/logrus"
@@ -20,9 +19,9 @@ import (
 
 // Node defines a babble node
 type Node struct {
-	// The node is implemented as a state-machine. The embedded state Manager
+	// Node operations are implemented as a state-machine. The embedded state
 	// object is used to manage the node's state.
-	_state.Manager
+	state
 
 	conf *config.Config
 
@@ -31,7 +30,7 @@ type Node struct {
 	// core is the link between the node and the underlying hashgraph. It
 	// controls some higher-level operations like inserting a list of events,
 	// keeping track of the peers list, fast-forwarding, etc.
-	core     *core
+	core     *Core
 	coreLock sync.Mutex
 
 	// transport is the object used to transmit and receive commands to other
@@ -41,7 +40,7 @@ type Node struct {
 
 	// proxy is the link between the node and the application. It is used to
 	// commit blocks from Babble to the application, and relay submitted
-	// transactions from the application to Babble.
+	// transactions from the applications to Babble.
 	proxy proxy.AppProxy
 
 	// submitCh is where the node listens for incoming transactions to be
@@ -60,8 +59,8 @@ type Node struct {
 
 	// The node runs the controlTimer in the background to periodically receive
 	// signals to initiate gossip routines. It is paused, reset, etc., based on
-	// the node's current state.
-	controlTimer *controlTimer
+	// the node's current state
+	controlTimer *ControlTimer
 
 	start        time.Time
 	syncRequests int
@@ -74,8 +73,7 @@ type Node struct {
 	initialUndeterminedEvents int
 }
 
-// NewNode instantiates a new Node and initializes it's Hashgraph with the
-// genesis peers and backend store.
+// NewNode is a factory method that returns a Node instance
 func NewNode(conf *config.Config,
 	validator *Validator,
 	peers *peers.PeerSet,
@@ -85,35 +83,29 @@ func NewNode(conf *config.Config,
 	proxy proxy.AppProxy,
 ) *Node {
 
-	// Prepare sigCh to relay SIGINT and SIGTERM system calls
+	//Prepare sigCh to relay SIGINT and SIGTERM system calls
 	sigCh := make(chan os.Signal)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	core := newCore(validator,
+	core := NewCore(validator,
 		peers,
 		genesisPeers,
 		store,
 		proxy.CommitBlock,
-		conf.MaintenanceMode,
 		conf.Logger())
-
-	netCh := make(<-chan net.RPC)
-	if trans != nil {
-		netCh = trans.Consumer()
-	}
 
 	node := Node{
 		conf:         conf,
 		logger:       conf.Logger(),
 		core:         core,
 		trans:        trans,
-		netCh:        netCh,
+		netCh:        trans.Consumer(),
 		proxy:        proxy,
 		submitCh:     proxy.SubmitCh(),
 		sigCh:        sigCh,
 		shutdownCh:   make(chan struct{}),
 		suspendCh:    make(chan struct{}),
-		controlTimer: newRandomControlTimer(),
+		controlTimer: NewRandomControlTimer(),
 	}
 
 	return &node
@@ -131,7 +123,7 @@ func (n *Node) Init() error {
 	// database (if bootstrap option is set in config).
 	if n.conf.Bootstrap {
 		n.logger.Debug("Bootstrap")
-		if err := n.core.bootstrap(); err != nil {
+		if err := n.core.Bootstrap(); err != nil {
 			return err
 		}
 		n.logger.Debug("Bootstrap completed")
@@ -150,15 +142,15 @@ func (n *Node) Init() error {
 			n.setBabblingOrCatchingUpState()
 		} else {
 			n.logger.Debug("Node does not belong to PeerSet => Joining")
-			n.transition(_state.Joining)
+			n.setState(Joining)
 		}
 	} else {
-		n.transition(_state.Suspended)
+		n.setState(Suspended)
 	}
 
 	// record the number of initial undetermined events so as to suspend the
 	// node when undetermined events exceed this value by SuspendLimit.
-	n.initialUndeterminedEvents = len(n.core.getUndeterminedEvents())
+	n.initialUndeterminedEvents = len(n.core.GetUndeterminedEvents())
 
 	return nil
 }
@@ -166,14 +158,10 @@ func (n *Node) Init() error {
 // Run invokes the main loop of the node. The gossip parameter controls whether
 // to actively participate in gossip or not.
 func (n *Node) Run(gossip bool) {
-	if n.conf.MaintenanceMode {
-		return
-	}
-
 	// The ControlTimer allows the background routines to control the heartbeat
 	// timer when the node is in the Babbling state. The timer should only be
 	// running when there are uncommitted transactions in the system.
-	go n.controlTimer.run(n.conf.HeartbeatTimeout)
+	go n.controlTimer.Run(n.conf.HeartbeatTimeout)
 
 	// Execute some background work regardless of the state of the node.
 	go n.doBackgroundWork()
@@ -181,18 +169,18 @@ func (n *Node) Run(gossip bool) {
 	// Execute Node State Machine
 	for {
 		// Run different routines depending on node state
-		state := n.GetState()
+		state := n.getState()
 
 		switch state {
-		case _state.Babbling:
+		case Babbling:
 			n.babble(gossip)
-		case _state.CatchingUp:
+		case CatchingUp:
 			n.fastForward()
-		case _state.Joining:
+		case Joining:
 			n.join()
-		case _state.Suspended:
+		case Suspended:
 			time.Sleep(2000 * time.Millisecond)
-		case _state.Shutdown:
+		case Shutdown:
 			return
 		}
 	}
@@ -204,18 +192,14 @@ func (n *Node) RunAsync(gossip bool) {
 	go n.Run(gossip)
 }
 
-// Leave causes the node to politely leave the network with a LeaveRequest and
-// to wait for its validator to be removed from the validator-set via consensus.
+// Leave causes the node to politely leave the network via a LeaveRequest and
+// wait for the node to be removed from the validator-list via consensus.
 func (n *Node) Leave() error {
-	if n.conf.MaintenanceMode {
-		return nil
-	}
-
 	n.logger.Info("LEAVING")
 
 	defer n.Shutdown()
 
-	err := n.core.leave(n.conf.JoinTimeout)
+	err := n.core.Leave(n.conf.JoinTimeout)
 	if err != nil {
 		n.logger.WithError(err).Error("Leaving")
 		return err
@@ -227,20 +211,18 @@ func (n *Node) Leave() error {
 // Shutdown attempts to cleanly shutdown the node by waiting for pending work to
 // be finished, stopping the control-timer, and closing the transport.
 func (n *Node) Shutdown() {
-	if n.GetState() != _state.Shutdown {
+	if n.getState() != Shutdown {
 		n.logger.Info("SHUTDOWN")
 
 		// exit any non-shutdown state immediately
-		n.transition(_state.Shutdown)
+		n.setState(Shutdown)
 
 		// stop and wait for concurrent operations
 		close(n.shutdownCh)
-		n.WaitRoutines()
+		n.waitRoutines()
 
 		// close transport and store
-		if n.trans != nil {
-			n.trans.Close()
-		}
+		n.trans.Close()
 
 		n.core.hg.Store.Close()
 	}
@@ -249,76 +231,95 @@ func (n *Node) Shutdown() {
 // Suspend puts the node in Suspended mode. It doesn't close the transport
 // because it needs to respond to incoming SyncRequests.
 func (n *Node) Suspend() {
-	if n.GetState() != _state.Suspended &&
-		n.GetState() != _state.Shutdown {
+	if n.getState() != Suspended &&
+		n.getState() != Shutdown {
 
 		n.logger.Info("SUSPEND")
 
-		n.transition(_state.Suspended)
+		n.setState(Suspended)
 
 		// Stop and wait for concurrent operations
 		close(n.suspendCh)
-		n.WaitRoutines()
+		n.waitRoutines()
 	}
 }
 
-// GetID returns the numeric ID of the node's validator, which is derived from
-// its public key.
+// GetID returns the numeric ID of the node's validator
 func (n *Node) GetID() uint32 {
 	return n.core.validator.ID()
 }
 
-// GetPubKey return the hexadecimal representation of the validator's public
-// key.
-func (n *Node) GetPubKey() string {
-	return n.core.validator.PublicKeyHex()
-}
-
 // GetStats returns information about the node.
 func (n *Node) GetStats() map[string]string {
+	toString := func(i *int) string {
+		if i == nil {
+			return "nil"
+		}
+
+		return strconv.Itoa(*i)
+	}
+
+	timeElapsed := time.Since(n.start)
+
+	consensusEvents := n.core.GetConsensusEventsCount()
+
+	consensusEventsPerSecond := float64(consensusEvents) / timeElapsed.Seconds()
+
+	lastConsensusRound := n.core.GetLastConsensusRoundIndex()
+
+	var consensusRoundsPerSecond float64
+
+	if lastConsensusRound != nil {
+		consensusRoundsPerSecond = float64(*lastConsensusRound) / timeElapsed.Seconds()
+	}
+
 	s := map[string]string{
-		"last_consensus_round": strconv.Itoa(n.GetLastConsensusRoundIndex()),
-		"last_block_index":     strconv.Itoa(n.GetLastBlockIndex()),
-		"consensus_events":     strconv.Itoa(n.core.getConsensusEventsCount()),
-		"undetermined_events":  strconv.Itoa(len(n.core.getUndeterminedEvents())),
-		"transactions":         strconv.Itoa(n.core.getConsensusTransactionsCount()),
-		"transaction_pool":     strconv.Itoa(len(n.core.transactionPool)),
-		"num_peers":            strconv.Itoa(n.core.peerSelector.getPeers().Len()),
-		"last_peer_change":     strconv.Itoa(n.core.lastPeerChangeRound),
-		"id":                   fmt.Sprint(n.core.validator.ID()),
-		"state":                n.GetState().String(),
-		"moniker":              n.core.validator.Moniker,
+		"last_consensus_round":   toString(lastConsensusRound),
+		"last_block_index":       strconv.Itoa(n.core.GetLastBlockIndex()),
+		"consensus_events":       strconv.Itoa(consensusEvents),
+		"consensus_transactions": strconv.Itoa(n.core.GetConsensusTransactionsCount()),
+		"undetermined_events":    strconv.Itoa(len(n.core.GetUndeterminedEvents())),
+		"transaction_pool":       strconv.Itoa(len(n.core.transactionPool)),
+		"num_peers":              strconv.Itoa(n.core.peerSelector.Peers().Len()),
+		"last_peer_change":       strconv.Itoa(n.core.LastPeerChangeRound),
+		"sync_rate":              strconv.FormatFloat(n.syncRate(), 'f', 2, 64),
+		"events_per_second":      strconv.FormatFloat(consensusEventsPerSecond, 'f', 2, 64),
+		"rounds_per_second":      strconv.FormatFloat(consensusRoundsPerSecond, 'f', 2, 64),
+		"round_events":           strconv.Itoa(n.core.GetLastCommitedRoundEventsCount()),
+		"id":                     fmt.Sprint(n.core.validator.ID()),
+		"state":                  n.getState().String(),
+		"moniker":                n.core.validator.Moniker,
+		"time":                   strconv.FormatInt(time.Now().UnixNano(), 10),
 	}
 	return s
 }
 
-// GetBlock returns a block by index.
+// GetBlock returns a block
 func (n *Node) GetBlock(blockIndex int) (*hg.Block, error) {
 	return n.core.hg.Store.GetBlock(blockIndex)
 }
 
-// GetLastBlockIndex returns the index of the last known block.
+// GetLastBlockIndex returns the index of the last known block
 func (n *Node) GetLastBlockIndex() int {
-	return n.core.getLastBlockIndex()
+	return n.core.GetLastBlockIndex()
 }
 
-// GetLastConsensusRoundIndex returns the index of the last consensus round.
+// GetLastConsensusRoundIndex returns the index of the last consensus round
 func (n *Node) GetLastConsensusRoundIndex() int {
-	lcr := n.core.getLastConsensusRoundIndex()
+	lcr := n.core.GetLastConsensusRoundIndex()
 	if lcr == nil {
 		return -1
 	}
 	return *lcr
 }
 
-// GetPeers returns the list of currently known peers, which is not necessarily
-// equal to the current validator-set.
+// GetPeers returns the current peers. Not necessarily equal to the
+// current validator-set
 func (n *Node) GetPeers() []*peers.Peer {
 	return n.core.peers.Peers
 }
 
-// GetValidatorSet returns the validator-set that is autoritative at a given
-// round.
+// GetValidatorSet returns the validator-set associated to a round
 func (n *Node) GetValidatorSet(round int) ([]*peers.Peer, error) {
 	peerSet, err := n.core.hg.Store.GetPeerSet(round)
 	if err != nil {
@@ -327,7 +328,7 @@ func (n *Node) GetValidatorSet(round int) ([]*peers.Peer, error) {
 	return peerSet.Peers, nil
 }
 
-// GetAllValidatorSets returns the entire history of validator-sets per round.
+// GetAllValidatorSets returns the entire history of validator-sets
 func (n *Node) GetAllValidatorSets() (map[int][]*peers.Peer, error) {
 	return n.core.hg.Store.GetAllPeerSets()
 }
@@ -342,7 +343,7 @@ func (n *Node) doBackgroundWork() {
 	for {
 		select {
 		case rpc := <-n.netCh:
-			n.GoFunc(func() {
+			n.goFunc(func() {
 				n.processRPC(rpc)
 				n.resetTimer()
 			})
@@ -366,11 +367,11 @@ func (n *Node) resetTimer() {
 	n.coreLock.Lock()
 	defer n.coreLock.Unlock()
 
-	if !n.controlTimer.isSet {
+	if !n.controlTimer.set {
 		ts := n.conf.HeartbeatTimeout
 
 		//Slow gossip if nothing interesting to say
-		if !n.core.busy() {
+		if !n.core.Busy() {
 			ts = time.Duration(n.conf.SlowHeartbeatTimeout)
 		}
 
@@ -379,28 +380,29 @@ func (n *Node) resetTimer() {
 }
 
 // checkSuspend suspends the node if the number of undetermined events in the
-// hashgraph exceeds initialUndeterminedEvents by n*SuspendLimit (where n is the
-// the size of the current validator set), or if the validator has been evicted.
+// hashgraph exceeds initialUndeterminedEvents by SuspendLimit, or the validator
+// has been evicted.
 func (n *Node) checkSuspend() {
 
 	// check too many undetermined events
-	newUndeterminedEvents := len(n.core.getUndeterminedEvents()) - n.initialUndeterminedEvents
-	tooManyUndeterminedEvents := newUndeterminedEvents > n.conf.SuspendLimit*n.core.validators.Len()
+	newUndeterminedEvents := len(n.core.GetUndeterminedEvents()) - n.initialUndeterminedEvents
+	tooManyUndeterminedEvents := newUndeterminedEvents > n.conf.SuspendLimit
+
 
 	// check evicted
 	evicted := n.core.hg.LastConsensusRound != nil &&
-		n.core.removedRound > 0 &&
-		n.core.removedRound > n.core.acceptedRound &&
-		*n.core.hg.LastConsensusRound >= n.core.removedRound
+		n.core.RemovedRound > 0 &&
+		n.core.RemovedRound > n.core.AcceptedRound &&
+		*n.core.hg.LastConsensusRound >= n.core.RemovedRound
 
 	// suspend if too many undetermined events or evicted
 	if tooManyUndeterminedEvents || evicted {
 		n.logger.WithFields(logrus.Fields{
 			"evicted":                   evicted,
 			"tooManyUndeterminedEvents": tooManyUndeterminedEvents,
-			"id":                        n.GetID(),
-			"removedRound":              n.core.removedRound,
-			"acceptedRound":             n.core.acceptedRound,
+			"id": n.GetID(),
+			"removedRound": n.core.RemovedRound,
+			"acceptedRound": n.core.AcceptedRound,
 		}).Debugf("SUSPEND")
 
 		n.Suspend()
@@ -420,9 +422,9 @@ func (n *Node) babble(gossip bool) {
 		select {
 		case <-n.controlTimer.tickCh:
 			if gossip {
-				peer := n.core.peerSelector.next()
+				peer := n.core.peerSelector.Next()
 				if peer != nil {
-					n.GoFunc(func() {
+					n.goFunc(func() {
 						n.gossip(peer)
 					})
 				} else {
@@ -445,14 +447,14 @@ func (n *Node) monologue() error {
 	n.coreLock.Lock()
 	defer n.coreLock.Unlock()
 
-	if n.core.busy() {
-		err := n.core.addSelfEvent("")
+	if n.core.Busy() {
+		err := n.core.AddSelfEvent("")
 		if err != nil {
 			n.logger.WithError(err).Error("monologue, AddSelfEvent()")
 			return err
 		}
 
-		err = n.core.processSigPool()
+		err = n.core.ProcessSigPool()
 		if err != nil {
 			n.logger.WithError(err).Error("monologue, ProcessSigPool()")
 			return err
@@ -469,7 +471,7 @@ func (n *Node) gossip(peer *peers.Peer) error {
 	defer func() {
 		// update peer selector
 		n.core.selectorLock.Lock()
-		newConnection := n.core.peerSelector.updateLast(peer.ID(), connected)
+		newConnection := n.core.peerSelector.UpdateLast(peer.ID(), connected)
 		n.core.selectorLock.Unlock()
 		if newConnection {
 			n.logger.WithFields(logrus.Fields{
@@ -504,7 +506,7 @@ func (n *Node) gossip(peer *peers.Peer) error {
 func (n *Node) pull(peer *peers.Peer) (otherKnownEvents map[uint32]int, err error) {
 	//Compute Known
 	n.coreLock.Lock()
-	knownEvents := n.core.knownEvents()
+	knownEvents := n.core.KnownEvents()
 	n.coreLock.Unlock()
 
 	//Send SyncRequest
@@ -542,7 +544,7 @@ func (n *Node) push(peer *peers.Peer, knownEvents map[uint32]int) error {
 	// Compute Diff
 	start := time.Now()
 	n.coreLock.Lock()
-	eventDiff, err := n.core.eventDiff(knownEvents)
+	eventDiff, err := n.core.EventDiff(knownEvents)
 	n.coreLock.Unlock()
 	elapsed := time.Since(start)
 	n.logger.WithField("duration", elapsed.Nanoseconds()).Debug("Diff()")
@@ -562,7 +564,7 @@ func (n *Node) push(peer *peers.Peer, knownEvents map[uint32]int) error {
 		}
 
 		// Convert to WireEvents
-		wireEvents, err := n.core.toWire(eventDiff)
+		wireEvents, err := n.core.ToWire(eventDiff)
 		if err != nil {
 			n.logger.WithField("error", err).Debug("Converting to WireEvent")
 			return err
@@ -591,7 +593,7 @@ func (n *Node) push(peer *peers.Peer, knownEvents map[uint32]int) error {
 func (n *Node) sync(fromID uint32, events []hg.WireEvent) error {
 	//Insert Events in Hashgraph and create new Head if necessary
 	start := time.Now()
-	err := n.core.sync(fromID, events)
+	err := n.core.Sync(fromID, events)
 	elapsed := time.Since(start)
 	n.logger.WithField("duration", elapsed.Nanoseconds()).Debug("Sync()")
 	if err != nil {
@@ -603,7 +605,7 @@ func (n *Node) sync(fromID uint32, events []hg.WireEvent) error {
 
 	//Process SignaturePool
 	start = time.Now()
-	err = n.core.processSigPool()
+	err = n.core.ProcessSigPool()
 	elapsed = time.Since(start)
 	n.logger.WithField("duration", elapsed.Nanoseconds()).Debug("ProcessSigPool()")
 	if err != nil {
@@ -623,7 +625,7 @@ func (n *Node) fastForward() error {
 	n.logger.Info("CATCHING-UP")
 
 	//wait until sync routines finish
-	n.WaitRoutines()
+	n.waitRoutines()
 
 	var err error
 
@@ -633,7 +635,7 @@ func (n *Node) fastForward() error {
 	resp := n.getBestFastForwardResponse()
 	if resp == nil {
 		n.logger.Error("getBestFastForwardResponse returned nil => Babbling")
-		n.transition(_state.Babbling)
+		n.setState(Babbling)
 		return fmt.Errorf("getBestFastForwardResponse returned nil")
 	}
 
@@ -646,21 +648,21 @@ func (n *Node) fastForward() error {
 
 	//prepare core. ie: fresh hashgraph
 	n.coreLock.Lock()
-	err = n.core.fastForward(&resp.Block, &resp.Frame)
+	err = n.core.FastForward(&resp.Block, &resp.Frame)
 	n.coreLock.Unlock()
 	if err != nil {
 		n.logger.WithError(err).Error("Fast Forwarding Hashgraph")
 		return err
 	}
 
-	err = n.core.processAcceptedInternalTransactions(resp.Block.RoundReceived(), resp.Block.InternalTransactionReceipts())
+	err = n.core.ProcessAcceptedInternalTransactions(resp.Block.RoundReceived(), resp.Block.InternalTransactionReceipts())
 	if err != nil {
 		n.logger.WithError(err).Error("Processing AnchorBlock InternalTransactionReceipts")
 	}
 
 	n.logger.Debug("FastForward OK")
 
-	n.transition(_state.Babbling)
+	n.setState(Babbling)
 
 	return nil
 }
@@ -671,7 +673,7 @@ func (n *Node) getBestFastForwardResponse() *net.FastForwardResponse {
 	var bestResponse *net.FastForwardResponse
 	maxBlock := 0
 
-	for _, p := range n.core.peerSelector.getPeers().Peers {
+	for _, p := range n.core.peerSelector.Peers().Peers {
 		start := time.Now()
 		resp, err := n.requestFastForward(p.NetAddr)
 		elapsed := time.Since(start)
@@ -707,13 +709,9 @@ Joining
 // join attempts to add the node's validator public-key to the current
 // validator-set via an InternalTransaction which has to go through consensus.
 func (n *Node) join() error {
-	if n.conf.MaintenanceMode {
-		return nil
-	}
-
 	n.logger.Info("JOINING")
 
-	peer := n.core.peerSelector.next()
+	peer := n.core.peerSelector.Next()
 
 	start := time.Now()
 	resp, err := n.requestJoin(peer.NetAddr)
@@ -734,10 +732,10 @@ func (n *Node) join() error {
 
 	if resp.Accepted {
 		// Set AcceptedRound, which is the next round at which the node is
-		// allowed to create SelfEvents, and reset RemovedRound to "unsuspend" a
-		// node if had been evicted prior to rejoining.
-		n.core.acceptedRound = resp.AcceptedRound
-		n.core.removedRound = -1
+		// allowed to create SelfEventss, and reset RemovedRound to
+		// "unsuspend" a node if had been evicted prior to rejoining.
+		n.core.AcceptedRound = resp.AcceptedRound
+		n.core.RemovedRound = -1
 
 		n.setBabblingOrCatchingUpState()
 	} else {
@@ -754,28 +752,18 @@ func (n *Node) join() error {
 Utils
 *******************************************************************************/
 
-// transition changes the node state and notifies the app via the proxy's
-// OnStateChanged callback
-func (n *Node) transition(state _state.State) {
-	n.SetState(state)
-
-	if err := n.proxy.OnStateChanged(state); err != nil {
-		n.logger.Error(err)
-	}
-}
-
 // setBabblingOrCatchingUpState sets the node's state to CatchingUp if fast-sync
 // is enabled, or to Babbling if fast-sync is not enabled.
 func (n *Node) setBabblingOrCatchingUpState() {
 	if n.conf.EnableFastSync {
 		n.logger.Debug("FastSync enabled => CatchingUp")
-		n.transition(_state.CatchingUp)
+		n.setState(CatchingUp)
 	} else {
 		n.logger.Debug("FastSync not enabled => Babbling")
-		if err := n.core.setHeadAndSeq(); err != nil {
-			n.core.setHeadAndSeq()
+		if err := n.core.SetHeadAndSeq(); err != nil {
+			n.core.SetHeadAndSeq()
 		}
-		n.transition(_state.Babbling)
+		n.setState(Babbling)
 	}
 }
 
@@ -785,7 +773,7 @@ func (n *Node) addTransaction(tx []byte) {
 	n.coreLock.Lock()
 	defer n.coreLock.Unlock()
 
-	n.core.addTransactions([][]byte{tx})
+	n.core.AddTransactions([][]byte{tx})
 }
 
 // logStats logs the output returned by GetStats()
@@ -793,14 +781,30 @@ func (n *Node) logStats() {
 	stats := n.GetStats()
 
 	n.logger.WithFields(logrus.Fields{
-		"last_consensus_round": stats["last_consensus_round"],
-		"last_block_index":     stats["last_block_index"],
-		"undetermined_events":  stats["undetermined_events"],
-		"transactions":         stats["transactions"],
-		"transaction_pool":     stats["transaction_pool"],
-		"num_peers":            stats["num_peers"],
-		"id":                   stats["id"],
-		"state":                stats["state"],
-		"moniker":              stats["moniker"],
+		"last_consensus_round":   stats["last_consensus_round"],
+		"last_block_index":       stats["last_block_index"],
+		"consensus_events":       stats["consensus_events"],
+		"consensus_transactions": stats["consensus_transactions"],
+		"undetermined_events":    stats["undetermined_events"],
+		"transaction_pool":       stats["transaction_pool"],
+		"num_peers":              stats["num_peers"],
+		"sync_rate":              stats["sync_rate"],
+		"events/s":               stats["events_per_second"],
+		"rounds/s":               stats["rounds_per_second"],
+		"round_events":           stats["round_events"],
+		"id":                     stats["id"],
+		"state":                  stats["state"],
+		"moniker":                stats["moniker"],
 	}).Debug("Stats")
+}
+
+// syncRate computes the ratio of sync-errors over sync-requests
+func (n *Node) syncRate() float64 {
+	var syncErrorRate float64
+
+	if n.syncRequests != 0 {
+		syncErrorRate = float64(n.syncErrors) / float64(n.syncRequests)
+	}
+
+	return 1 - syncErrorRate
 }

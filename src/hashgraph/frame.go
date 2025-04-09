@@ -9,18 +9,16 @@ import (
 	"github.com/ugorji/go/codec"
 )
 
-// Frame represents a section of the hashgraph.
+// Frame ...
 type Frame struct {
-	Round     int                   // RoundReceived
-	Peers     []*peers.Peer         // the authoritative peer-set at Round
-	Roots     map[string]*Root      // Roots on top of which Frame Events can be inserted
-	Events    []*FrameEvent         // Events with RoundReceived = Round
-	PeerSets  map[int][]*peers.Peer // full peer-set history ([round] => Peers)
-	Timestamp int64                 // unix timestamp (median of round-received famous witnesses)
+	Round    int //RoundReceived
+	Peers    []*peers.Peer
+	Roots    map[string]*Root
+	Events   []*FrameEvent         //Events with RoundReceived = Round
+	PeerSets map[int][]*peers.Peer //[round] => Peers
 }
 
-// SortedFrameEvents returns all the events in the Frame, including event is
-// roots, sorted by LAMPORT timestamp
+// SortedFrameEvents ...
 func (f *Frame) SortedFrameEvents() []*FrameEvent {
 	sorted := SortedFrameEvents{}
 	for _, r := range f.Roots {
@@ -31,7 +29,7 @@ func (f *Frame) SortedFrameEvents() []*FrameEvent {
 	return sorted
 }
 
-// Marshal returns the JSON encoding of Frame.
+//Marshal - json encoding of Frame
 func (f *Frame) Marshal() ([]byte, error) {
 	b := new(bytes.Buffer)
 	jh := new(codec.JsonHandle)
@@ -45,7 +43,7 @@ func (f *Frame) Marshal() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-// Unmarshal parses a JSON encoded Frame.
+// Unmarshal ...
 func (f *Frame) Unmarshal(data []byte) error {
 	b := bytes.NewBuffer(data)
 	jh := new(codec.JsonHandle)
@@ -59,7 +57,7 @@ func (f *Frame) Unmarshal(data []byte) error {
 	return nil
 }
 
-// Hash returns the SHA256 hash of the marshalled Frame.
+// Hash ...
 func (f *Frame) Hash() ([]byte, error) {
 	hashBytes, err := f.Marshal()
 	if err != nil {
