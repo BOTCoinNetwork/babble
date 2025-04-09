@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mosaicnetworks/babble/src/common"
-	"github.com/mosaicnetworks/babble/src/config"
-	"github.com/mosaicnetworks/babble/src/net/signal/wamp"
+	"github.com/BOTCoinNetwork/babble/src/common"
+	"github.com/BOTCoinNetwork/babble/src/config"
+	"github.com/BOTCoinNetwork/babble/src/net/signal/wamp"
 )
 
 func TestWebRTCStreamLayerWithWampSignal(t *testing.T) {

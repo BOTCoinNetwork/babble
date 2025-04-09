@@ -1,8 +1,8 @@
 package net
 
 import (
-	"github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/hashgraph"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
 // SyncRequest corresponds to  the pull part of the pull-push gossip protocol.

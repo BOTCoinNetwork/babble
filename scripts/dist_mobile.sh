@@ -29,8 +29,8 @@ mkdir -p build/pkgmobile
 docker run --rm  \
     -u `id -u $USER` \
     -e "BUILD_TAGS=$BUILD_TAGS" \
-    -v "$(pwd)":/workspace/go/src/github.com/mosaicnetworks/babble \
-    -w /workspace/go/src/github.com/mosaicnetworks/babble \
+    -v "$(pwd)":/workspace/go/src/github.com/BOTCoinNetwork/babble \
+    -w /workspace/go/src/github.com/BOTCoinNetwork/babble \
     mosaicnetworks/mobile:0.0.2 ./scripts/dist_mobile_build.sh
 
 # Add "babble" and $VERSION prefix to package name.

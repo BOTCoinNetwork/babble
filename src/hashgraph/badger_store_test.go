@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
 func initBadgerStore(cacheSize int, t *testing.T) *BadgerStore {

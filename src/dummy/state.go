@@ -3,10 +3,10 @@ package dummy
 import (
 	"fmt"
 
-	"github.com/mosaicnetworks/babble/src/crypto"
-	"github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/node/state"
-	"github.com/mosaicnetworks/babble/src/proxy"
+	"github.com/BOTCoinNetwork/babble/src/crypto"
+	"github.com/BOTCoinNetwork/babble/src/hashgraph"
+	"github.com/BOTCoinNetwork/babble/src/node/state"
+	"github.com/BOTCoinNetwork/babble/src/proxy"
 	"github.com/sirupsen/logrus"
 )
 

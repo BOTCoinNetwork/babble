@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/mosaicnetworks/babble/src/common"
-	"github.com/mosaicnetworks/babble/src/crypto/keys"
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/common"
+	"github.com/BOTCoinNetwork/babble/src/crypto/keys"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
 /*

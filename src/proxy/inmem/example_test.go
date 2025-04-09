@@ -1,9 +1,9 @@
 package inmem
 
 import (
-	"github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/node/state"
-	"github.com/mosaicnetworks/babble/src/proxy"
+	"github.com/BOTCoinNetwork/babble/src/hashgraph"
+	"github.com/BOTCoinNetwork/babble/src/node/state"
+	"github.com/BOTCoinNetwork/babble/src/proxy"
 )
 
 // ExampleHandler implements the ProxyHandler interface. This is where an

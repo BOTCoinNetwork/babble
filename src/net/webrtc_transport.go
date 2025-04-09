@@ -3,7 +3,7 @@ package net
 import (
 	"time"
 
-	"github.com/mosaicnetworks/babble/src/net/signal"
+	"github.com/BOTCoinNetwork/babble/src/net/signal"
 	webrtc "github.com/pion/webrtc/v2"
 	"github.com/sirupsen/logrus"
 )

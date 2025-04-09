@@ -14,6 +14,6 @@ export XDG_CACHE_HOME=/tmp/.cache.$$
 # Build!
 echo "==> Building..."
 
-$(which gomobile) bind -v -target=android -tags="mobile" -o /workspace/go/src/github.com/mosaicnetworks/babble/build/pkgmobile/mobile.aar github.com/mosaicnetworks/babble/src/mobile 
+$(which gomobile) bind -v -target=android -tags="mobile" -o /workspace/go/src/github.com/BOTCoinNetwork/babble/build/pkgmobile/mobile.aar github.com/BOTCoinNetwork/babble/src/mobile 
 
 exit 0

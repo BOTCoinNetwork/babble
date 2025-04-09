@@ -5,9 +5,9 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 
-	"github.com/mosaicnetworks/babble/src/crypto"
-	"github.com/mosaicnetworks/babble/src/crypto/keys"
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/crypto"
+	"github.com/BOTCoinNetwork/babble/src/crypto/keys"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
 /*******************************************************************************

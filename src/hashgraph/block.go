@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/mosaicnetworks/babble/src/common"
-	"github.com/mosaicnetworks/babble/src/crypto"
-	"github.com/mosaicnetworks/babble/src/crypto/keys"
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/common"
+	"github.com/BOTCoinNetwork/babble/src/crypto"
+	"github.com/BOTCoinNetwork/babble/src/crypto/keys"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
 // BlockBody is the content of a Block.

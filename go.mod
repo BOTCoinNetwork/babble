@@ -1,4 +1,4 @@
-module github.com/mosaicnetworks/babble
+module github.com/BOTCoinNetwork/babble
 
 go 1.20
 
@@ -35,8 +35,6 @@ require (
 	github.com/mattn/go-isatty v0.0.8 // indirect
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
-	github.com/onsi/ginkgo v1.12.0 // indirect
-	github.com/onsi/gomega v1.9.0 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/pion/dtls/v2 v2.0.0-rc.6 // indirect
 	github.com/pion/ice v0.7.8 // indirect

@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"math"
 
-	"github.com/mosaicnetworks/babble/src/common"
-	"github.com/mosaicnetworks/babble/src/crypto"
+	"github.com/BOTCoinNetwork/babble/src/common"
+	"github.com/BOTCoinNetwork/babble/src/crypto"
 )
 
 // PeerSet represents a collection of peers.

@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mosaicnetworks/babble/src/hashgraph"
-	hg "github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/net"
-	_state "github.com/mosaicnetworks/babble/src/node/state"
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/hashgraph"
+	hg "github.com/BOTCoinNetwork/babble/src/hashgraph"
+	"github.com/BOTCoinNetwork/babble/src/net"
+	_state "github.com/BOTCoinNetwork/babble/src/node/state"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 	"github.com/sirupsen/logrus"
 )
 

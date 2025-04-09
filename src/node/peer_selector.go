@@ -3,7 +3,7 @@ package node
 import (
 	"math/rand"
 
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
 // peerSelector defines an interface for selecting the next gossip peer based

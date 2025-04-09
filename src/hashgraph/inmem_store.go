@@ -3,8 +3,8 @@ package hashgraph
 import (
 	"strconv"
 
-	cm "github.com/mosaicnetworks/babble/src/common"
-	"github.com/mosaicnetworks/babble/src/peers"
+	cm "github.com/BOTCoinNetwork/babble/src/common"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
 // InmemStore implements the Store interface with inmemory caches. When the

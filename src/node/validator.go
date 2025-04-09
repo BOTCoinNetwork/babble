@@ -3,7 +3,7 @@ package node
 import (
 	"crypto/ecdsa"
 
-	"github.com/mosaicnetworks/babble/src/crypto/keys"
+	"github.com/BOTCoinNetwork/babble/src/crypto/keys"
 )
 
 // Validator represents the peer that operates a node. It has control over it's

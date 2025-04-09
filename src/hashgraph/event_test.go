@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/mosaicnetworks/babble/src/crypto/keys"
+	"github.com/BOTCoinNetwork/babble/src/crypto/keys"
 )
 
 func createDummyEventBody() EventBody {

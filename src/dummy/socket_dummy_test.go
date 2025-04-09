@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mosaicnetworks/babble/src/common"
-	bcrypto "github.com/mosaicnetworks/babble/src/crypto"
-	"github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/node/state"
-	"github.com/mosaicnetworks/babble/src/peers"
-	aproxy "github.com/mosaicnetworks/babble/src/proxy/socket/app"
+	"github.com/BOTCoinNetwork/babble/src/common"
+	bcrypto "github.com/BOTCoinNetwork/babble/src/crypto"
+	"github.com/BOTCoinNetwork/babble/src/hashgraph"
+	"github.com/BOTCoinNetwork/babble/src/node/state"
+	"github.com/BOTCoinNetwork/babble/src/peers"
+	aproxy "github.com/BOTCoinNetwork/babble/src/proxy/socket/app"
 )
 
 func TestSocketProxyServer(t *testing.T) {

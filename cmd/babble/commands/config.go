@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"github.com/mosaicnetworks/babble/src/config"
+	"github.com/BOTCoinNetwork/babble/src/config"
 )
 
 // CLIConfig contains configuration for the Run command

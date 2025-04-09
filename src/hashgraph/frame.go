@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"sort"
 
-	"github.com/mosaicnetworks/babble/src/crypto"
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/crypto"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 	"github.com/ugorji/go/codec"
 )
 

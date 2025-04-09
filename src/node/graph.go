@@ -1,7 +1,7 @@
 package node
 
 import (
-	hg "github.com/mosaicnetworks/babble/src/hashgraph"
+	hg "github.com/BOTCoinNetwork/babble/src/hashgraph"
 )
 
 // Infos is the object used by Graph to collect information about a Hashgraph.

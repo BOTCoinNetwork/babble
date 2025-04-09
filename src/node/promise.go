@@ -1,8 +1,8 @@
 package node
 
 import (
-	"github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/hashgraph"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
 // joinPromiseResponse is a struct returned by a joinPromise.

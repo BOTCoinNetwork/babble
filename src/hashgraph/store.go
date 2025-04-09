@@ -1,6 +1,6 @@
 package hashgraph
 
-import "github.com/mosaicnetworks/babble/src/peers"
+import "github.com/BOTCoinNetwork/babble/src/peers"
 
 // Store is an interface for backend stores.
 type Store interface {

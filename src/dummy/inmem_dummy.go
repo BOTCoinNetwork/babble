@@ -1,7 +1,7 @@
 package dummy
 
 import (
-	"github.com/mosaicnetworks/babble/src/proxy/inmem"
+	"github.com/BOTCoinNetwork/babble/src/proxy/inmem"
 	"github.com/sirupsen/logrus"
 )
 

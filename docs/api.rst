@@ -57,11 +57,11 @@ same process as your handler):
     import (
     	"os"
     
-    	"github.com/mosaicnetworks/babble/src/config"
-    	"github.com/mosaicnetworks/babble/src/hashgraph"
-    	"github.com/mosaicnetworks/babble/src/node/state"
-    	"github.com/mosaicnetworks/babble/src/proxy"
-    	"github.com/mosaicnetworks/babble/src/proxy/inmem"
+    	"github.com/BOTCoinNetwork/babble/src/config"
+    	"github.com/BOTCoinNetwork/babble/src/hashgraph"
+    	"github.com/BOTCoinNetwork/babble/src/node/state"
+    	"github.com/BOTCoinNetwork/babble/src/proxy"
+    	"github.com/BOTCoinNetwork/babble/src/proxy/inmem"
     )
     
     // ExampleHandler implements the ProxyHandler interface. This is where an

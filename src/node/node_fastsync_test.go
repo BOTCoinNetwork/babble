@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	_state "github.com/mosaicnetworks/babble/src/node/state"
+	_state "github.com/BOTCoinNetwork/babble/src/node/state"
 )
 
 /*

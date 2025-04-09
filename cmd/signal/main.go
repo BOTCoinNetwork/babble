@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	cmd "github.com/mosaicnetworks/babble/cmd/signal/commands"
+	cmd "github.com/BOTCoinNetwork/babble/cmd/signal/commands"
 )
 
 func main() {

@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/mosaicnetworks/babble/src/common"
-	"github.com/mosaicnetworks/babble/src/crypto/keys"
-	hg "github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/peers"
-	"github.com/mosaicnetworks/babble/src/proxy"
+	"github.com/BOTCoinNetwork/babble/src/common"
+	"github.com/BOTCoinNetwork/babble/src/crypto/keys"
+	hg "github.com/BOTCoinNetwork/babble/src/hashgraph"
+	"github.com/BOTCoinNetwork/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/proxy"
 )
 
 func initCores(n int, t *testing.T) ([]*core, map[uint32]*ecdsa.PrivateKey, map[string]string) {

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/mosaicnetworks/babble/src/config"
-	bkeys "github.com/mosaicnetworks/babble/src/crypto/keys"
-	"github.com/mosaicnetworks/babble/src/dummy"
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/config"
+	bkeys "github.com/BOTCoinNetwork/babble/src/crypto/keys"
+	"github.com/BOTCoinNetwork/babble/src/dummy"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
 func TestInitStore(t *testing.T) {

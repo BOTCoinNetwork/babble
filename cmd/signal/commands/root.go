@@ -6,8 +6,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/mosaicnetworks/babble/src/config"
-	"github.com/mosaicnetworks/babble/src/net/signal/wamp"
+	"github.com/BOTCoinNetwork/babble/src/config"
+	"github.com/BOTCoinNetwork/babble/src/net/signal/wamp"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

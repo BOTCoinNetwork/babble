@@ -29,8 +29,8 @@ mkdir -p build/pkg
 docker run --rm  \
     -u `id -u $USER` \
     -e "BUILD_TAGS=$BUILD_TAGS" \
-    -v "$(pwd)":/go/src/github.com/mosaicnetworks/babble \
-    -w /go/src/github.com/mosaicnetworks/babble \
+    -v "$(pwd)":/go/src/github.com/BOTCoinNetwork/babble \
+    -w /go/src/github.com/BOTCoinNetwork/babble \
     mosaicnetworks/glider:0.0.5 ./scripts/dist_build.sh
 
 # Add "babble" and $VERSION prefix to package name.

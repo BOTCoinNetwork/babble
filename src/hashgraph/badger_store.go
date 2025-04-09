@@ -7,8 +7,8 @@ import (
 
 	"github.com/dgraph-io/badger"
 	badger_options "github.com/dgraph-io/badger/options"
-	cm "github.com/mosaicnetworks/babble/src/common"
-	"github.com/mosaicnetworks/babble/src/peers"
+	cm "github.com/BOTCoinNetwork/babble/src/common"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 	"github.com/sirupsen/logrus"
 )
 

@@ -5,9 +5,9 @@ package app
 import (
 	"time"
 
-	"github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/node/state"
-	"github.com/mosaicnetworks/babble/src/proxy"
+	"github.com/BOTCoinNetwork/babble/src/hashgraph"
+	"github.com/BOTCoinNetwork/babble/src/node/state"
+	"github.com/BOTCoinNetwork/babble/src/proxy"
 	"github.com/sirupsen/logrus"
 )
 

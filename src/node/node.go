@@ -9,12 +9,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/mosaicnetworks/babble/src/config"
-	hg "github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/net"
-	_state "github.com/mosaicnetworks/babble/src/node/state"
-	"github.com/mosaicnetworks/babble/src/peers"
-	"github.com/mosaicnetworks/babble/src/proxy"
+	"github.com/BOTCoinNetwork/babble/src/config"
+	hg "github.com/BOTCoinNetwork/babble/src/hashgraph"
+	"github.com/BOTCoinNetwork/babble/src/net"
+	_state "github.com/BOTCoinNetwork/babble/src/node/state"
+	"github.com/BOTCoinNetwork/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/proxy"
 	"github.com/sirupsen/logrus"
 )
 

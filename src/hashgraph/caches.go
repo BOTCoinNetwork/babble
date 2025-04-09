@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	cm "github.com/mosaicnetworks/babble/src/common"
-	"github.com/mosaicnetworks/babble/src/peers"
+	cm "github.com/BOTCoinNetwork/babble/src/common"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
 type key struct {

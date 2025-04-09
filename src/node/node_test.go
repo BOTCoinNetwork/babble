@@ -12,14 +12,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mosaicnetworks/babble/src/common"
-	"github.com/mosaicnetworks/babble/src/config"
-	bkeys "github.com/mosaicnetworks/babble/src/crypto/keys"
-	dummy "github.com/mosaicnetworks/babble/src/dummy"
-	hg "github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/net"
-	"github.com/mosaicnetworks/babble/src/net/signal/wamp"
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/common"
+	"github.com/BOTCoinNetwork/babble/src/config"
+	bkeys "github.com/BOTCoinNetwork/babble/src/crypto/keys"
+	dummy "github.com/BOTCoinNetwork/babble/src/dummy"
+	hg "github.com/BOTCoinNetwork/babble/src/hashgraph"
+	"github.com/BOTCoinNetwork/babble/src/net"
+	"github.com/BOTCoinNetwork/babble/src/net/signal/wamp"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
 /*

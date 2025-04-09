@@ -5,14 +5,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/mosaicnetworks/babble/src/config"
-	"github.com/mosaicnetworks/babble/src/crypto/keys"
-	h "github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/net"
-	"github.com/mosaicnetworks/babble/src/net/signal/wamp"
-	"github.com/mosaicnetworks/babble/src/node"
-	"github.com/mosaicnetworks/babble/src/peers"
-	"github.com/mosaicnetworks/babble/src/service"
+	"github.com/BOTCoinNetwork/babble/src/config"
+	"github.com/BOTCoinNetwork/babble/src/crypto/keys"
+	h "github.com/BOTCoinNetwork/babble/src/hashgraph"
+	"github.com/BOTCoinNetwork/babble/src/net"
+	"github.com/BOTCoinNetwork/babble/src/net/signal/wamp"
+	"github.com/BOTCoinNetwork/babble/src/node"
+	"github.com/BOTCoinNetwork/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/service"
 	"github.com/sirupsen/logrus"
 )
 

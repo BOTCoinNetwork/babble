@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mosaicnetworks/babble/src/common"
-	"github.com/mosaicnetworks/babble/src/config"
+	"github.com/BOTCoinNetwork/babble/src/common"
+	"github.com/BOTCoinNetwork/babble/src/config"
 	"github.com/pion/webrtc/v2"
 	"github.com/sirupsen/logrus"
 )

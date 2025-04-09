@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"sync"
 
-	hg "github.com/mosaicnetworks/babble/src/hashgraph"
+	hg "github.com/BOTCoinNetwork/babble/src/hashgraph"
 
-	"github.com/mosaicnetworks/babble/src/node"
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/node"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 	"github.com/sirupsen/logrus"
 )
 

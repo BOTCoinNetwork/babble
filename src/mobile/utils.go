@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mosaicnetworks/babble/src/crypto/keys"
+	"github.com/BOTCoinNetwork/babble/src/crypto/keys"
 )
 
 // GetPrivPublKeys generates a new public key pair and returns it in the

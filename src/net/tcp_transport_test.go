@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mosaicnetworks/babble/src/common"
-	"github.com/mosaicnetworks/babble/src/hashgraph"
+	"github.com/BOTCoinNetwork/babble/src/common"
+	"github.com/BOTCoinNetwork/babble/src/hashgraph"
 )
 
 func TestTCPTransport_BadAddr(t *testing.T) {

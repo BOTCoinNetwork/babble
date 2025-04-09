@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mosaicnetworks/babble/src/common"
-	hg "github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/peers"
-	"github.com/mosaicnetworks/babble/src/proxy"
+	"github.com/BOTCoinNetwork/babble/src/common"
+	hg "github.com/BOTCoinNetwork/babble/src/hashgraph"
+	"github.com/BOTCoinNetwork/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/proxy"
 	"github.com/sirupsen/logrus"
 )
 

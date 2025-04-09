@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/mosaicnetworks/babble/src/babble"
-	"github.com/mosaicnetworks/babble/src/config"
-	"github.com/mosaicnetworks/babble/src/node"
-	"github.com/mosaicnetworks/babble/src/proxy"
-	"github.com/mosaicnetworks/babble/src/proxy/inmem"
+	"github.com/BOTCoinNetwork/babble/src/babble"
+	"github.com/BOTCoinNetwork/babble/src/config"
+	"github.com/BOTCoinNetwork/babble/src/node"
+	"github.com/BOTCoinNetwork/babble/src/proxy"
+	"github.com/BOTCoinNetwork/babble/src/proxy/inmem"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )

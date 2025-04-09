@@ -1,8 +1,8 @@
 package proxy
 
 import (
-	"github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/node/state"
+	"github.com/BOTCoinNetwork/babble/src/hashgraph"
+	"github.com/BOTCoinNetwork/babble/src/node/state"
 )
 
 // AppProxy defines the interface which is used by Babble to communicate with

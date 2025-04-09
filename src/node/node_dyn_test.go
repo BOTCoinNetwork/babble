@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	bkeys "github.com/mosaicnetworks/babble/src/crypto/keys"
-	"github.com/mosaicnetworks/babble/src/peers"
+	bkeys "github.com/BOTCoinNetwork/babble/src/crypto/keys"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 )
 
 /*

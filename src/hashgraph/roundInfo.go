@@ -3,8 +3,8 @@ package hashgraph
 import (
 	"bytes"
 
-	"github.com/mosaicnetworks/babble/src/common"
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/BOTCoinNetwork/babble/src/common"
+	"github.com/BOTCoinNetwork/babble/src/peers"
 	"github.com/ugorji/go/codec"
 )
 
